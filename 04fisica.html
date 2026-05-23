@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>04 - Física y plataformas</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 14px 24px; background: #16213e; border-bottom: 2px solid #00d4ff; }
+    header h1 { color: #00d4ff; font-size: 1.2rem; }
+    header p  { color: #888; font-size: 0.82rem; margin-top: 3px; }
+    .teoria { background: #16213e; border-bottom: 1px solid #0f3460; padding: 0 24px; }
+    .teoria summary { cursor: pointer; padding: 10px 0; color: #fbbf24; font-size: 0.9rem; user-select: none; }
+    .teoria-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; padding: 0 0 12px; }
+    .bloque { background: #0d1b2a; border-left: 3px solid #00d4ff; border-radius: 4px; padding: 10px 14px; font-size: 0.82rem; line-height: 1.6; }
+    .bloque strong { color: #00d4ff; display: block; margin-bottom: 4px; }
+    pre { background: #16213e; padding: 8px; border-radius: 4px; font-size: 0.78rem; color: #a8d8ea; overflow-x: auto; margin-top: 4px; }
+    .workspace { flex: 1; display: flex; overflow: hidden; }
+    .editor-panel { width: 50%; display: flex; flex-direction: column; border-right: 2px solid #0f3460; }
+    .panel-bar { background: #0f3460; padding: 6px 14px; font-size: 0.8rem; color: #00d4ff; display: flex; align-items: center; justify-content: space-between; }
+    textarea { flex: 1; background: #0d1b2a; color: #a8d8ea; border: none; padding: 14px; font-family: 'Consolas', monospace; font-size: 0.85rem; line-height: 1.7; resize: none; outline: none; tab-size: 2; }
+    button { background: #00d4ff; color: #0d1b2a; border: none; padding: 6px 18px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
+    button:hover { background: #38e6ff; }
+    .preview-panel { flex: 1; display: flex; flex-direction: column; }
+    iframe { flex: 1; border: none; background: #000; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Lección 04 — Física, colisiones y plataformas</h1>
+  <p>Activa Arcade Physics para tener gravedad, salto y colisiones automáticas.</p>
+</header>
+
+<div class="teoria">
+  <details>
+    <summary>📖 Ver teoría</summary>
+    <div class="teoria-grid">
+
+      <div class="bloque">
+        <strong>Activar física en el config</strong>
+        <pre>physics: {
+  default: 'arcade',
+  arcade: {
+    gravity: { y: 400 }, // gravedad
+    debug: false
+  }
+}</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Objetos con física vs sin física</strong>
+        <pre>// CON física (se mueve, cae):
+jugador = this.physics.add
+          .sprite(x, y, 'img');
+
+// SIN física / estático (plataforma):
+plats = this.physics.add.staticGroup();
+plats.create(x, y, 'img');</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Colisión entre objetos</strong>
+        <pre>// Hace que A y B choquen:
+this.physics.add.collider(A, B);
+
+// Detectar overlap (recolección):
+this.physics.add.overlap(
+  A, B, callback
+);</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Saltar</strong>
+        <pre>// Solo saltar si está en el suelo:
+if (
+  cursors.up.isDown &&
+  jugador.body.touching.down
+) {
+  jugador.setVelocityY(-400);
+  // Negativo = hacia arriba
+}</pre>
+      </div>
+
+    </div>
+  </details>
+</div>
+
+<div class="workspace">
+  <div class="editor-panel">
+    <div class="panel-bar">
+      <span>✏️ Edita y pulsa Ejecutar</span>
+      <button onclick="ejecutar()">▶ Ejecutar</button>
+    </div>
+    <textarea id="codigo" spellcheck="false">const config = {
+  type: Phaser.AUTO,
+  width: 500,
+  height: 380,
+  backgroundColor: '#0d1b2a',
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { y: 500 }, // gravedad hacia abajo
+      debug: false          // ponlo en true para ver los hitboxes
+    }
+  },
+  scene: { preload, create, update }
+};
+
+new Phaser.Game(config);
+
+let jugador, plataformas, cursors;
+
+function preload() {
+  // No tenemos imágenes, generamos texturas con código
+  const g = this.make.graphics({ add: false });
+
+  // Textura del jugador (cuadro azul 32x32)
+  g.fillStyle(0x00d4ff);
+  g.fillRect(0, 0, 32, 32);
+  g.generateTexture('jugador', 32, 32);
+
+  // Textura de plataforma (rectángulo verde)
+  g.clear();
+  g.fillStyle(0x4ade80);
+  g.fillRect(0, 0, 200, 16);
+  g.generateTexture('plataforma', 200, 16);
+
+  g.destroy();
+}
+
+function create() {
+  // ── Plataformas estáticas (no las afecta la gravedad) ──
+  plataformas = this.physics.add.staticGroup();
+  // Suelo largo
+  plataformas.create(250, 370, 'plataforma').setScale(2.5, 1).refreshBody();
+  // Plataformas flotantes
+  plataformas.create(100, 270, 'plataforma');
+  plataformas.create(360, 200, 'plataforma');
+  plataformas.create(200, 130, 'plataforma').setScale(0.8, 1).refreshBody();
+
+  // ── Jugador con física ──
+  jugador = this.physics.add.sprite(80, 300, 'jugador');
+  jugador.setBounce(0.05);           // pequeño rebote al caer
+  jugador.setCollideWorldBounds(true); // no salir del canvas
+
+  // ── Colisión jugador ↔ plataformas ──
+  this.physics.add.collider(jugador, plataformas);
+
+  cursors = this.input.keyboard.createCursorKeys();
+
+  this.add.text(10, 10, '← → para moverse  ·  ↑ para saltar', {
+    fontSize: '13px', color: '#888'
+  });
+}
+
+function update() {
+  // Movimiento horizontal
+  if (cursors.left.isDown) {
+    jugador.setVelocityX(-200);
+  } else if (cursors.right.isDown) {
+    jugador.setVelocityX(200);
+  } else {
+    jugador.setVelocityX(0); // frenar si no hay tecla
+  }
+
+  // Saltar — solo si está tocando el suelo
+  if (cursors.up.isDown && jugador.body.touching.down) {
+    jugador.setVelocityY(-420);
+  }
+}
+</textarea>
+  </div>
+  <div class="preview-panel">
+    <div class="panel-bar"><span>🎮 Vista previa — haz clic aquí primero para capturar el teclado</span></div>
+    <iframe id="preview"></iframe>
+  </div>
+</div>
+
+<script>
+  function ejecutar() {
+    const codigo = document.getElementById('codigo').value;
+    const iframe = document.getElementById('preview');
+    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>*{margin:0;padding:0;}body{background:#0d1b2a;display:flex;justify-content:center;align-items:center;height:100vh;}</style>
+</head><body>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"><\/script>
+<script>${codigo}<\/script>
+</body></html>`;
+  }
+  window.onload = ejecutar;
+</script>
+</body>
+</html>

@@ -22,48 +22,83 @@
 </head>
 <body>
 <script>
-    // Configuración del juego
     const config = {
         type: Phaser.AUTO,
-        width: 600,
-        height: 400,
-        backgroundColor: '#fff',
+        width: 500,
+        height: 380,
+        backgroundColor: '#0d1b2a',
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 500 }, // gravedad hacia abajo
+                debug: false          // ponlo en true para ver los hitboxes
+            }
+        },
         scene: { preload, create, update }
     };
 
-    const game = new Phaser.Game(config);
+    new Phaser.Game(config);
 
-    // ── preload: carga assets (aquí no hay ninguno aún) ──
-    function preload() {}
+    let jugador, plataformas, cursors;
 
-    // ── create: se ejecuta UNA vez al arrancar ──
+    function preload() {
+        // No tenemos imágenes, generamos texturas con código
+        const g = this.make.graphics({ add: false });
+
+        // Textura del jugador (cuadro azul 32x32)
+        g.fillStyle(0x00d4ff);
+        g.fillRect(0, 0, 32, 32);
+        g.generateTexture('jugador', 32, 32);
+
+        // Textura de plataforma (rectángulo verde)
+        g.clear();
+        g.fillStyle(0x4ade80);
+        g.fillRect(0, 0, 200, 16);
+        g.generateTexture('plataforma', 200, 16);
+
+        g.destroy();
+    }
+
     function create() {
-        // Texto en pantalla
-        this.add.text(20, 20, '¡Hola Phaser!', {
-            fontSize: '32px',
-            color: '#00d4ff'
-        });
+        // ── Plataformas estáticas (no las afecta la gravedad) ──
+        plataformas = this.physics.add.staticGroup();
+        // Suelo largo
+        plataformas.create(250, 370, 'plataforma').setScale(2.5, 1).refreshBody();
+        // Plataformas flotantes
+        plataformas.create(100, 270, 'plataforma');
+        plataformas.create(360, 200, 'plataforma');
+        plataformas.create(200, 130, 'plataforma').setScale(0.8, 1).refreshBody();
 
-        this.add.text(20, 80, 'Estoy aprendiendo Phaser 3 :)', {
-            fontSize: '18px',
-            color: '#a8d8ea'
-        });
+        // ── Jugador con física ──
+        jugador = this.physics.add.sprite(80, 300, 'jugador');
+        jugador.setBounce(0.05);           // pequeño rebote al caer
+        jugador.setCollideWorldBounds(true); // no salir del canvas
 
-        // Rectángulo que se moverá en update()
-        this.cuadro = this.add.rectangle(60, 200, 40, 40, 0xfbbf24);
+        // ── Colisión jugador ↔ plataformas ──
+        this.physics.add.collider(jugador, plataformas);
 
-        this.add.text(20, 260, '↑ Este cuadro se mueve en update()', {
-            fontSize: '13px',
-            color: '#888'
+        cursors = this.input.keyboard.createCursorKeys();
+
+        this.add.text(10, 10, '← → para moverse  ·  ↑ para saltar', {
+            fontSize: '13px', color: '#888'
         });
     }
 
-    // ── update: se llama ~60 veces por segundo ──
     function update() {
-        this.cuadro.x += 2;
-        if (this.cuadro.x > 520) this.cuadro.x = 20;
-    }
+        // Movimiento horizontal
+        if (cursors.left.isDown) {
+            jugador.setVelocityX(-200);
+        } else if (cursors.right.isDown) {
+            jugador.setVelocityX(200);
+        } else {
+            jugador.setVelocityX(0); // frenar si no hay tecla
+        }
 
+        // Saltar — solo si está tocando el suelo
+        if (cursors.up.isDown && jugador.body.touching.down) {
+            jugador.setVelocityY(-420);
+        }
+    }
 </script>
 </body>
 </html>

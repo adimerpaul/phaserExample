@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>02 - Escenas</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 14px 24px; background: #16213e; border-bottom: 2px solid #00d4ff; }
+    header h1 { color: #00d4ff; font-size: 1.2rem; }
+    header p  { color: #888; font-size: 0.82rem; margin-top: 3px; }
+    .teoria { background: #16213e; border-bottom: 1px solid #0f3460; padding: 0 24px; }
+    .teoria summary { cursor: pointer; padding: 10px 0; color: #fbbf24; font-size: 0.9rem; user-select: none; }
+    .teoria-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; padding: 0 0 12px; }
+    .bloque { background: #0d1b2a; border-left: 3px solid #00d4ff; border-radius: 4px; padding: 10px 14px; font-size: 0.82rem; line-height: 1.6; }
+    .bloque strong { color: #00d4ff; display: block; margin-bottom: 4px; }
+    pre { background: #16213e; padding: 8px; border-radius: 4px; font-size: 0.78rem; color: #a8d8ea; overflow-x: auto; margin-top: 4px; }
+    .workspace { flex: 1; display: flex; overflow: hidden; }
+    .editor-panel { width: 50%; display: flex; flex-direction: column; border-right: 2px solid #0f3460; }
+    .panel-bar { background: #0f3460; padding: 6px 14px; font-size: 0.8rem; color: #00d4ff; display: flex; align-items: center; justify-content: space-between; }
+    textarea { flex: 1; background: #0d1b2a; color: #a8d8ea; border: none; padding: 14px; font-family: 'Consolas', monospace; font-size: 0.85rem; line-height: 1.7; resize: none; outline: none; tab-size: 2; }
+    button { background: #00d4ff; color: #0d1b2a; border: none; padding: 6px 18px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
+    button:hover { background: #38e6ff; }
+    .preview-panel { flex: 1; display: flex; flex-direction: column; }
+    iframe { flex: 1; border: none; background: #000; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Lección 02 — Escenas y ciclo de vida</h1>
+  <p>Una escena = una "pantalla" del juego. Menú, nivel 1, game over… cada una tiene su propio preload/create/update.</p>
+</header>
+
+<div class="teoria">
+  <details>
+    <summary>📖 Ver teoría</summary>
+    <div class="teoria-grid">
+
+      <div class="bloque">
+        <strong>¿Qué es una escena?</strong>
+        Como las pantallas de un juego: menú principal, nivel 1, nivel 2, game over…
+        Cada escena es independiente y tiene su propio código.
+      </div>
+
+      <div class="bloque">
+        <strong>Los 3 métodos</strong>
+        <pre>preload() → carga imágenes/audio
+          (se ejecuta 1 vez, antes de todo)
+
+create()  → construye la escena
+          (se ejecuta 1 vez al iniciar)
+
+update()  → game loop
+          (se ejecuta ~60 veces/segundo)</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Cambiar de escena</strong>
+        <pre>// Ir a otra escena:
+this.scene.start('NombreEscena');
+
+// Pausar la actual:
+this.scene.pause();
+
+// Reiniciar la actual:
+this.scene.restart();</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Crear escenas con clase</strong>
+        <pre>class MiEscena extends Phaser.Scene {
+  constructor() {
+    super({ key: 'MiEscena' });
+  }
+  create() {
+    this.add.text(10, 10, 'Hola');
+  }
+}
+
+// En el config:
+scene: [Escena1, Escena2]</pre>
+      </div>
+
+    </div>
+  </details>
+</div>
+
+<div class="workspace">
+  <div class="editor-panel">
+    <div class="panel-bar">
+      <span>✏️ Edita y pulsa Ejecutar</span>
+      <button onclick="ejecutar()">▶ Ejecutar</button>
+    </div>
+    <textarea id="codigo" spellcheck="false">// ── ESCENA 1: Menú ────────────────────────────
+class Inicio extends Phaser.Scene {
+  constructor() {
+    super({ key: 'Inicio' }); // nombre único de la escena
+  }
+
+  create() {
+    this.add.text(20, 20, 'ESCENA 1: Menú', {
+      fontSize: '24px', color: '#00d4ff'
+    });
+
+    this.add.text(20, 70, 'Una escena = una pantalla del juego.\nEsta es la pantalla de menú.', {
+      fontSize: '14px', color: '#a8d8ea'
+    });
+
+    // Botón: al hacer clic cambia a la escena 'Juego'
+    const btn = this.add
+      .rectangle(140, 200, 220, 48, 0x0f3460)
+      .setInteractive();
+
+    this.add.text(45, 187, '▶  Ir a Escena 2 (Juego)', {
+      fontSize: '14px', color: '#4ade80'
+    });
+
+    btn.on('pointerover', () => btn.setFillStyle(0x4ade80));
+    btn.on('pointerout',  () => btn.setFillStyle(0x0f3460));
+    btn.on('pointerdown', () => {
+      this.scene.start('Juego'); // ← cambiar de escena
+    });
+  }
+}
+
+// ── ESCENA 2: Juego ────────────────────────────
+class Juego extends Phaser.Scene {
+  constructor() {
+    super({ key: 'Juego' });
+  }
+
+  create() {
+    this.add.text(20, 20, 'ESCENA 2: Juego', {
+      fontSize: '24px', color: '#4ade80'
+    });
+
+    this.add.text(20, 70, 'Cada escena tiene su propio\npreload(), create() y update().', {
+      fontSize: '14px', color: '#a8d8ea'
+    });
+
+    // Cuadro animado (demostrar update)
+    this.cuadro = this.add.rectangle(60, 200, 30, 30, 0xfbbf24);
+
+    // Botón volver
+    const btn = this.add
+      .rectangle(120, 300, 180, 44, 0x0f3460)
+      .setInteractive();
+
+    this.add.text(45, 288, '← Volver al Menú', {
+      fontSize: '14px', color: '#fbbf24'
+    });
+
+    btn.on('pointerover', () => btn.setFillStyle(0xfbbf24));
+    btn.on('pointerout',  () => btn.setFillStyle(0x0f3460));
+    btn.on('pointerdown', () => {
+      this.scene.start('Inicio'); // ← volver
+    });
+  }
+
+  update() {
+    this.cuadro.x += 2;
+    if (this.cuadro.x > 480) this.cuadro.x = 20;
+  }
+}
+
+// ── Configuración ──────────────────────────────
+const config = {
+  type: Phaser.AUTO,
+  width: 500,
+  height: 360,
+  backgroundColor: '#0d1b2a',
+  scene: [Inicio, Juego] // lista de escenas (la 1ª arranca primero)
+};
+
+new Phaser.Game(config);
+</textarea>
+  </div>
+  <div class="preview-panel">
+    <div class="panel-bar"><span>🎮 Vista previa</span></div>
+    <iframe id="preview"></iframe>
+  </div>
+</div>
+
+<script>
+  function ejecutar() {
+    const codigo = document.getElementById('codigo').value;
+    const iframe = document.getElementById('preview');
+    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>*{margin:0;padding:0;}body{background:#0d1b2a;display:flex;justify-content:center;align-items:center;height:100vh;}</style>
+</head><body>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"><\/script>
+<script>${codigo}<\/script>
+</body></html>`;
+  }
+  window.onload = ejecutar;
+</script>
+</body>
+</html>

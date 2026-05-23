@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>05 - Juego completo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 14px 24px; background: #16213e; border-bottom: 2px solid #00d4ff; }
+    header h1 { color: #00d4ff; font-size: 1.2rem; }
+    header p  { color: #888; font-size: 0.82rem; margin-top: 3px; }
+    .teoria { background: #16213e; border-bottom: 1px solid #0f3460; padding: 0 24px; }
+    .teoria summary { cursor: pointer; padding: 10px 0; color: #fbbf24; font-size: 0.9rem; user-select: none; }
+    .teoria-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; padding: 0 0 12px; }
+    .bloque { background: #0d1b2a; border-left: 3px solid #00d4ff; border-radius: 4px; padding: 10px 14px; font-size: 0.82rem; line-height: 1.6; }
+    .bloque strong { color: #00d4ff; display: block; margin-bottom: 4px; }
+    pre { background: #16213e; padding: 8px; border-radius: 4px; font-size: 0.78rem; color: #a8d8ea; overflow-x: auto; margin-top: 4px; }
+    .workspace { flex: 1; display: flex; overflow: hidden; }
+    .editor-panel { width: 50%; display: flex; flex-direction: column; border-right: 2px solid #0f3460; }
+    .panel-bar { background: #0f3460; padding: 6px 14px; font-size: 0.8rem; color: #00d4ff; display: flex; align-items: center; justify-content: space-between; }
+    textarea { flex: 1; background: #0d1b2a; color: #a8d8ea; border: none; padding: 14px; font-family: 'Consolas', monospace; font-size: 0.85rem; line-height: 1.7; resize: none; outline: none; tab-size: 2; }
+    button { background: #00d4ff; color: #0d1b2a; border: none; padding: 6px 18px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
+    button:hover { background: #38e6ff; }
+    .preview-panel { flex: 1; display: flex; flex-direction: column; }
+    iframe { flex: 1; border: none; background: #000; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Lección 05 — Juego completo: Recolecta monedas</h1>
+  <p>Un mini juego con jugador, monedas, enemigos, puntaje, game over y reinicio.</p>
+</header>
+
+<div class="teoria">
+  <details>
+    <summary>📖 Ver teoría — partes de un juego completo</summary>
+    <div class="teoria-grid">
+
+      <div class="bloque">
+        <strong>Grupos de objetos</strong>
+        <pre>// Crear un grupo:
+monedas = this.physics.add.group();
+
+// Agregar objetos al grupo:
+monedas.create(x, y, 'img');
+
+// Recorrer el grupo:
+monedas.getChildren().forEach(m => {
+  m.x = ...;
+});</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Overlap = recolección</strong>
+        <pre>// Cuando jugador toca una moneda,
+// llama a la función 'recolectar':
+this.physics.add.overlap(
+  jugador,
+  monedas,
+  recolectar
+);
+
+function recolectar(jugador, moneda) {
+  moneda.destroy(); // quitar del juego
+  puntos++;
+}</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Temporizador</strong>
+        <pre>// Llamar función cada 2 segundos:
+this.time.addEvent({
+  delay: 2000,
+  callback: spawnMoneda,
+  callbackScope: this,
+  loop: true
+});</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Game Over y reinicio</strong>
+        <pre>// Detener física:
+this.physics.pause();
+
+// Mostrar texto game over:
+this.add.text(x, y, 'GAME OVER', ...);
+
+// Reiniciar la escena al hacer clic:
+this.input.on('pointerdown', () => {
+  this.scene.restart();
+});</pre>
+      </div>
+
+    </div>
+  </details>
+</div>
+
+<div class="workspace">
+  <div class="editor-panel">
+    <div class="panel-bar">
+      <span>✏️ Edita y pulsa Ejecutar</span>
+      <button onclick="ejecutar()">▶ Ejecutar</button>
+    </div>
+    <textarea id="codigo" spellcheck="false">// ═══════════════════════════════════════
+//  MINI JUEGO: Recolecta monedas
+//  - Muévete con ← →
+//  - Recoge monedas amarillas (+10 pts)
+//  - Evita los enemigos rojos
+//  - Clic para reiniciar al perder
+// ═══════════════════════════════════════
+
+const config = {
+  type: Phaser.AUTO,
+  width: 500,
+  height: 400,
+  backgroundColor: '#0d1b2a',
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 0 }, debug: false }
+  },
+  scene: { preload, create, update }
+};
+
+new Phaser.Game(config);
+
+// Variables globales de la escena
+let jugador, monedas, enemigos, cursors;
+let textoPuntos, textoVidas;
+let puntos = 0;
+let vidas = 3;
+let gameOver = false;
+
+// ── preload: generar texturas sin imágenes ──────────────
+function preload() {
+  const g = this.make.graphics({ add: false });
+
+  // Jugador: cuadro azul
+  g.fillStyle(0x00d4ff);
+  g.fillRect(0, 0, 28, 28);
+  g.generateTexture('jugador', 28, 28);
+
+  // Moneda: círculo amarillo
+  g.clear();
+  g.fillStyle(0xfbbf24);
+  g.fillCircle(10, 10, 10);
+  g.generateTexture('moneda', 20, 20);
+
+  // Enemigo: cuadro rojo
+  g.clear();
+  g.fillStyle(0xf87171);
+  g.fillRect(0, 0, 24, 24);
+  g.generateTexture('enemigo', 24, 24);
+
+  // Suelo
+  g.clear();
+  g.fillStyle(0x4ade80);
+  g.fillRect(0, 0, 500, 12);
+  g.generateTexture('suelo', 500, 12);
+
+  g.destroy();
+}
+
+// ── create: construir la escena ─────────────────────────
+function create() {
+  puntos = 0;
+  vidas = 3;
+  gameOver = false;
+
+  // Suelo
+  const suelo = this.physics.add.staticGroup();
+  suelo.create(250, 394, 'suelo');
+
+  // Jugador
+  jugador = this.physics.add.sprite(250, 350, 'jugador');
+  jugador.setCollideWorldBounds(true);
+  this.physics.add.collider(jugador, suelo);
+
+  // Grupo de monedas
+  monedas = this.physics.add.group();
+  spawnMoneda.call(this); // primera moneda al inicio
+
+  // Grupo de enemigos
+  enemigos = this.physics.add.group();
+
+  // Spawn moneda cada 2 segundos
+  this.time.addEvent({
+    delay: 2000,
+    callback: spawnMoneda,
+    callbackScope: this,
+    loop: true
+  });
+
+  // Spawn enemigo cada 3 segundos
+  this.time.addEvent({
+    delay: 3000,
+    callback: spawnEnemigo,
+    callbackScope: this,
+    loop: true
+  });
+
+  // Overlap: jugador recoge moneda
+  this.physics.add.overlap(jugador, monedas, recolectar, null, this);
+
+  // Overlap: jugador toca enemigo → pierde vida
+  this.physics.add.overlap(jugador, enemigos, golpe, null, this);
+
+  cursors = this.input.keyboard.createCursorKeys();
+
+  // HUD
+  textoPuntos = this.add.text(10, 10, 'Puntos: 0', {
+    fontSize: '18px', color: '#fbbf24', fontFamily: 'Consolas'
+  });
+  textoVidas = this.add.text(10, 34, 'Vidas: ♥ ♥ ♥', {
+    fontSize: '16px', color: '#f87171', fontFamily: 'Consolas'
+  });
+
+  this.add.text(10, 378, '← → para moverse · recoge ● evita ■', {
+    fontSize: '11px', color: '#555'
+  });
+}
+
+// ── update: game loop ───────────────────────────────────
+function update() {
+  if (gameOver) return;
+
+  if (cursors.left.isDown) {
+    jugador.setVelocityX(-220);
+  } else if (cursors.right.isDown) {
+    jugador.setVelocityX(220);
+  } else {
+    jugador.setVelocityX(0);
+  }
+}
+
+// ── Funciones auxiliares ────────────────────────────────
+
+function spawnMoneda() {
+  if (gameOver) return;
+  const x = Phaser.Math.Between(20, 480);
+  const m = monedas.create(x, 20, 'moneda');
+  m.setVelocityY(Phaser.Math.Between(80, 160));
+}
+
+function spawnEnemigo() {
+  if (gameOver) return;
+  const x = Phaser.Math.Between(20, 480);
+  const e = enemigos.create(x, 20, 'enemigo');
+  e.setVelocityY(Phaser.Math.Between(120, 220));
+}
+
+function recolectar(jugador, moneda) {
+  moneda.destroy();
+  puntos += 10;
+  textoPuntos.setText('Puntos: ' + puntos);
+}
+
+function golpe(jugador, enemigo) {
+  enemigo.destroy();
+  vidas--;
+
+  const corazones = '♥ '.repeat(vidas).trim() || '✘';
+  textoVidas.setText('Vidas: ' + corazones);
+
+  // Flash rojo en el jugador
+  jugador.setTint(0xff0000);
+  this.time.delayedCall(300, () => jugador.clearTint());
+
+  if (vidas <= 0) terminarJuego.call(this);
+}
+
+function terminarJuego() {
+  gameOver = true;
+  this.physics.pause();
+
+  // Overlay oscuro
+  this.add.rectangle(250, 200, 500, 400, 0x000000, 0.6);
+
+  this.add.text(250, 140, 'GAME OVER', {
+    fontSize: '40px', color: '#f87171', fontFamily: 'Consolas'
+  }).setOrigin(0.5);
+
+  this.add.text(250, 210, 'Puntos: ' + puntos, {
+    fontSize: '24px', color: '#fbbf24', fontFamily: 'Consolas'
+  }).setOrigin(0.5);
+
+  this.add.text(250, 270, 'Clic para reiniciar', {
+    fontSize: '16px', color: '#888', fontFamily: 'Consolas'
+  }).setOrigin(0.5);
+
+  this.input.on('pointerdown', () => this.scene.restart());
+}
+</textarea>
+  </div>
+  <div class="preview-panel">
+    <div class="panel-bar"><span>🎮 Vista previa — haz clic aquí primero para capturar el teclado</span></div>
+    <iframe id="preview"></iframe>
+  </div>
+</div>
+
+<script>
+  function ejecutar() {
+    const codigo = document.getElementById('codigo').value;
+    const iframe = document.getElementById('preview');
+    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>*{margin:0;padding:0;}body{background:#0d1b2a;display:flex;justify-content:center;align-items:center;height:100vh;}</style>
+</head><body>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"><\/script>
+<script>${codigo}<\/script>
+</body></html>`;
+  }
+  window.onload = ejecutar;
+</script>
+</body>
+</html>
