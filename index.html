@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        /*body {*/
+        /*    background: #0d1b2a;*/
+        /*    display: flex;*/
+        /*    justify-content: center;*/
+        /*    align-items: center;*/
+        /*    height: 100vh;*/
+        /*}*/
+    </style>
+</head>
+<body>
+<script>
+    // Configuración del juego
+    const config = {
+        type: Phaser.AUTO,
+        width: 600,
+        height: 400,
+        backgroundColor: '#fff',
+        scene: { preload, create, update }
+    };
+
+    const game = new Phaser.Game(config);
+
+    // ── preload: carga assets (aquí no hay ninguno aún) ──
+    function preload() {}
+
+    // ── create: se ejecuta UNA vez al arrancar ──
+    function create() {
+        // Texto en pantalla
+        this.add.text(20, 20, '¡Hola Phaser!', {
+            fontSize: '32px',
+            color: '#00d4ff'
+        });
+
+        this.add.text(20, 80, 'Estoy aprendiendo Phaser 3 :)', {
+            fontSize: '18px',
+            color: '#a8d8ea'
+        });
+
+        // Rectángulo que se moverá en update()
+        this.cuadro = this.add.rectangle(60, 200, 40, 40, 0xfbbf24);
+
+        this.add.text(20, 260, '↑ Este cuadro se mueve en update()', {
+            fontSize: '13px',
+            color: '#888'
+        });
+    }
+
+    // ── update: se llama ~60 veces por segundo ──
+    function update() {
+        this.cuadro.x += 2;
+        if (this.cuadro.x > 520) this.cuadro.x = 20;
+    }
+
+</script>
+</body>
+</html>

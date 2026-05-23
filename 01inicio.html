@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>01 - Introducción a Phaser</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── CABECERA ── */
+    header {
+      padding: 16px 24px;
+      background: #16213e;
+      border-bottom: 2px solid #00d4ff;
+    }
+
+    header h1 { color: #00d4ff; font-size: 1.3rem; }
+    header p  { color: #888; font-size: 0.85rem; margin-top: 4px; }
+
+    /* ── TEORIA (acordeón sencillo) ── */
+    .teoria {
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      padding: 0 24px;
+    }
+
+    .teoria summary {
+      cursor: pointer;
+      padding: 10px 0;
+      color: #fbbf24;
+      font-size: 0.9rem;
+      user-select: none;
+    }
+
+    .teoria-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      padding: 0 0 14px;
+    }
+
+    .bloque {
+      background: #0d1b2a;
+      border-left: 3px solid #00d4ff;
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 0.83rem;
+      line-height: 1.6;
+    }
+
+    .bloque strong { color: #00d4ff; display: block; margin-bottom: 4px; }
+
+    table { width: 100%; font-size: 0.8rem; border-collapse: collapse; margin-top: 6px; }
+    th { background: #0f3460; color: #00d4ff; padding: 5px 8px; text-align: left; }
+    td { padding: 4px 8px; border-bottom: 1px solid #0f3460; }
+
+    /* ── EDITOR + PREVIEW ── */
+    .workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .editor-panel {
+      width: 50%;
+      display: flex;
+      flex-direction: column;
+      border-right: 2px solid #0f3460;
+    }
+
+    .panel-bar {
+      background: #0f3460;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      color: #00d4ff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    textarea {
+      flex: 1;
+      background: #0d1b2a;
+      color: #a8d8ea;
+      border: none;
+      padding: 16px;
+      font-family: 'Consolas', monospace;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      resize: none;
+      outline: none;
+      tab-size: 2;
+    }
+
+    button {
+      background: #00d4ff;
+      color: #0d1b2a;
+      border: none;
+      padding: 6px 18px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover { background: #38e6ff; }
+
+    .preview-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    iframe {
+      flex: 1;
+      border: none;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CABECERA -->
+  <header>
+    <h1>Lección 01 — ¿Qué es Phaser?</h1>
+    <p>Framework JavaScript para crear juegos 2D en el navegador. Sin instalación: solo un &lt;script&gt;.</p>
+  </header>
+
+  <!-- TEORIA (se puede abrir/cerrar) -->
+  <div class="teoria">
+    <details>
+      <summary>📖 Ver teoría (clic para abrir/cerrar)</summary>
+      <div class="teoria-grid">
+
+        <div class="bloque">
+          <strong>¿Qué es Phaser?</strong>
+          Framework gratuito para juegos 2D en el navegador.
+          Usa WebGL para renderizar gráficos rápidos.
+          Solo necesitas un &lt;script&gt; y ya funciona.
+        </div>
+
+        <div class="bloque">
+          <strong>¿Qué juegos puedo hacer?</strong>
+          Plataformas, puzzles, RPG 2D, shooters, top-down,
+          endless runner… cualquier cosa en 2D.
+          Para 3D se usa otra librería (Three.js).
+        </div>
+
+        <div class="bloque">
+          <strong>Phaser vs Unity vs Godot</strong>
+          <table>
+            <tr><th></th><th>Phaser</th><th>Unity</th><th>Godot</th></tr>
+            <tr><td>Lenguaje</td><td>JS</td><td>C#</td><td>GDScript</td></tr>
+            <tr><td>2D</td><td>✔</td><td>~</td><td>✔</td></tr>
+            <tr><td>3D</td><td>✘</td><td>✔</td><td>✔</td></tr>
+            <tr><td>Browser</td><td>✔</td><td>~</td><td>~</td></tr>
+            <tr><td>Instalar</td><td>Nada</td><td>2 GB</td><td>100 MB</td></tr>
+          </table>
+        </div>
+
+        <div class="bloque">
+          <strong>Los 3 métodos clave</strong>
+          <code style="background:#16213e;display:block;padding:6px;border-radius:4px;margin-top:4px;font-size:0.8rem">
+preload() → carga imágenes/audio
+create()  → construye la escena (1 vez)
+update()  → game loop (~60 fps)
+          </code>
+        </div>
+
+      </div>
+    </details>
+  </div>
+
+  <!-- WORKSPACE -->
+  <div class="workspace">
+
+    <!-- EDITOR -->
+    <div class="editor-panel">
+      <div class="panel-bar">
+        <span>✏️ Código — edítalo y pulsa Ejecutar</span>
+        <button onclick="ejecutar()">▶ Ejecutar</button>
+      </div>
+      <textarea id="codigo" spellcheck="false">// Configuración del juego
+const config = {
+  type: Phaser.AUTO,
+  width: 500,
+  height: 400,
+  backgroundColor: '#0d1b2a',
+  scene: { preload, create, update }
+};
+
+const game = new Phaser.Game(config);
+
+// ── preload: carga assets (aquí no hay ninguno aún) ──
+function preload() {}
+
+// ── create: se ejecuta UNA vez al arrancar ──
+function create() {
+  // Texto en pantalla
+  this.add.text(20, 20, '¡Hola Phaser!', {
+    fontSize: '32px',
+    color: '#00d4ff'
+  });
+
+  this.add.text(20, 80, 'Estoy aprendiendo Phaser 3 :)', {
+    fontSize: '18px',
+    color: '#a8d8ea'
+  });
+
+  // Rectángulo que se moverá en update()
+  this.cuadro = this.add.rectangle(60, 200, 40, 40, 0xfbbf24);
+
+  this.add.text(20, 260, '↑ Este cuadro se mueve en update()', {
+    fontSize: '13px',
+    color: '#888'
+  });
+}
+
+// ── update: se llama ~60 veces por segundo ──
+function update() {
+  this.cuadro.x += 2;
+  if (this.cuadro.x > 520) this.cuadro.x = 20;
+}
+</textarea>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="preview-panel">
+      <div class="panel-bar">
+        <span>🎮 Vista previa</span>
+      </div>
+      <iframe id="preview"></iframe>
+    </div>
+
+  </div>
+
+  <script>
+    // Inyecta el código del editor dentro de un iframe con Phaser cargado
+    function ejecutar() {
+      const codigo = document.getElementById('codigo').value;
+      const iframe = document.getElementById('preview');
+
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin:0; padding:0; }
+    body { background: #0d1b2a; display:flex; justify-content:center; align-items:center; height:100vh; }
+  </style>
+</head>
+<body>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"><\/script>
+  <script>
+    ${codigo}
+  <\/script>
+</body>
+</html>`;
+
+      iframe.srcdoc = html;
+    }
+
+    // Ejecutar automáticamente al cargar la página
+    window.onload = ejecutar;
+  </script>
+
+</body>
+</html>
