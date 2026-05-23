@@ -101,8 +101,8 @@ function animate() {
       <span>✏️ Edita y pulsa Ejecutar</span>
       <button onclick="ejecutar()">▶ Ejecutar</button>
     </div>
-    <textarea id="codigo" spellcheck="false">import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/controls/OrbitControls.js';
+    <textarea id="codigo" spellcheck="false">import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // ═══════════════════════════════════════════════════
 //  MINI MUNDO 3D
@@ -346,6 +346,14 @@ window.addEventListener('resize', () => {
     const iframe = document.getElementById('preview');
     iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <style>*{margin:0;padding:0;}body{background:#000;overflow:hidden;}</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/"
+  }
+}
+<\/script>
 </head><body>
 <script type="module">${codigo}<\/script>
 </body></html>`;
