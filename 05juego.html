@@ -102,112 +102,148 @@ this.input.on('pointerdown', () => {
       <span>✏️ Edita y pulsa Ejecutar</span>
       <button onclick="ejecutar()">▶ Ejecutar</button>
     </div>
-    <textarea id="codigo" spellcheck="false">// ═══════════════════════════════════════
+    <textarea id="codigo" spellcheck="false">// ═══════════════════════════════════════════════════
 //  MINI JUEGO: Recolecta monedas
-//  - Muévete con ← →
-//  - Recoge monedas amarillas (+10 pts)
-//  - Evita los enemigos rojos
-//  - Clic para reiniciar al perder
-// ═══════════════════════════════════════
+//  Controles: ← → para moverse
+//  Objetivo:  toca las monedas amarillas (+10 pts)
+//  Peligro:   evita los cuadros rojos (pierdes vida)
+//  Game over: cuando pierdes 3 vidas → clic reinicia
+// ═══════════════════════════════════════════════════
 
+
+// ── 1. CONFIGURACIÓN DEL JUEGO ──────────────────────
+// Este objeto le dice a Phaser cómo arrancar el juego.
 const config = {
-  type: Phaser.AUTO,
-  width: 500,
-  height: 400,
+  type: Phaser.AUTO,       // usa WebGL si puede, sino Canvas
+  width: 500,              // ancho del canvas en píxeles
+  height: 400,             // alto del canvas en píxeles
   backgroundColor: '#0d1b2a',
   physics: {
-    default: 'arcade',
-    arcade: { gravity: { y: 0 }, debug: false }
+    default: 'arcade',     // motor de física simple de Phaser
+    arcade: {
+      gravity: { y: 0 },   // sin gravedad global (vista de arriba)
+      debug: false          // ponlo en TRUE para ver los hitboxes
+    }
   },
-  scene: { preload, create, update }
+  scene: { preload, create, update }  // las 3 funciones del ciclo de vida
 };
 
+// Arranca el juego con esa configuración
 new Phaser.Game(config);
 
-// Variables globales de la escena
-let jugador, monedas, enemigos, cursors;
-let textoPuntos, textoVidas;
-let puntos = 0;
-let vidas = 3;
-let gameOver = false;
 
-// ── preload: generar texturas sin imágenes ──────────────
+// ── 2. VARIABLES GLOBALES ───────────────────────────
+// Se declaran fuera de las funciones para poder usarlas
+// en preload, create Y update al mismo tiempo.
+let jugador;       // el sprite del jugador
+let monedas;       // grupo con todas las monedas en pantalla
+let enemigos;      // grupo con todos los enemigos en pantalla
+let cursors;       // objeto con las teclas de flechas
+let textoPuntos;   // referencia al texto de puntaje (para actualizarlo)
+let textoVidas;    // referencia al texto de vidas
+let puntos = 0;    // contador de puntos
+let vidas = 3;     // vidas restantes
+let gameOver = false; // bandera: ¿terminó el juego?
+
+
+// ── 3. PRELOAD ──────────────────────────────────────
+// Se ejecuta UNA vez antes de create().
+// Aquí se cargan imágenes, audio, etc.
+// Como no tenemos archivos de imagen, dibujamos
+// las texturas con código usando graphics.
 function preload() {
+  // make.graphics crea un "pincel" temporal fuera de la escena
   const g = this.make.graphics({ add: false });
 
-  // Jugador: cuadro azul
-  g.fillStyle(0x00d4ff);
-  g.fillRect(0, 0, 28, 28);
-  g.generateTexture('jugador', 28, 28);
+  // — Textura del JUGADOR (cuadro azul 28x28 px) —
+  g.fillStyle(0x00d4ff);        // color en hexadecimal (azul)
+  g.fillRect(0, 0, 28, 28);     // dibuja el rectángulo
+  g.generateTexture('jugador', 28, 28); // guarda como textura llamada 'jugador'
 
-  // Moneda: círculo amarillo
-  g.clear();
-  g.fillStyle(0xfbbf24);
-  g.fillCircle(10, 10, 10);
+  // — Textura de la MONEDA (círculo amarillo) —
+  g.clear();                    // borra lo anterior del pincel
+  g.fillStyle(0xfbbf24);        // amarillo
+  g.fillCircle(10, 10, 10);     // círculo en (10,10) de radio 10
   g.generateTexture('moneda', 20, 20);
 
-  // Enemigo: cuadro rojo
+  // — Textura del ENEMIGO (cuadro rojo) —
   g.clear();
-  g.fillStyle(0xf87171);
+  g.fillStyle(0xf87171);        // rojo
   g.fillRect(0, 0, 24, 24);
   g.generateTexture('enemigo', 24, 24);
 
-  // Suelo
+  // — Textura del SUELO (barra verde ancha) —
   g.clear();
-  g.fillStyle(0x4ade80);
-  g.fillRect(0, 0, 500, 12);
+  g.fillStyle(0x4ade80);        // verde
+  g.fillRect(0, 0, 500, 12);    // barra de 500x12 px
   g.generateTexture('suelo', 500, 12);
 
-  g.destroy();
+  g.destroy(); // liberar memoria del pincel
 }
 
-// ── create: construir la escena ─────────────────────────
+
+// ── 4. CREATE ───────────────────────────────────────
+// Se ejecuta UNA vez cuando la escena arranca (o se reinicia).
+// Aquí construimos todo: objetos, físicas, timers, HUD.
 function create() {
+  // Resetear variables (importante al reiniciar)
   puntos = 0;
   vidas = 3;
   gameOver = false;
 
-  // Suelo
+  // — SUELO —
+  // staticGroup = objetos que NO se mueven aunque choquen
   const suelo = this.physics.add.staticGroup();
+  // create(x, y, textura) → coloca el suelo centrado abajo
   suelo.create(250, 394, 'suelo');
 
-  // Jugador
+  // — JUGADOR —
+  // physics.add.sprite → sprite CON física (puede moverse, colisionar)
   jugador = this.physics.add.sprite(250, 350, 'jugador');
-  jugador.setCollideWorldBounds(true);
+  jugador.setCollideWorldBounds(true); // no puede salir del canvas
+  // collider = choque sólido: jugador no atraviesa el suelo
   this.physics.add.collider(jugador, suelo);
 
-  // Grupo de monedas
+  // — MONEDAS —
+  // group() crea un contenedor vacío; luego añadimos monedas con spawnMoneda()
   monedas = this.physics.add.group();
-  spawnMoneda.call(this); // primera moneda al inicio
+  spawnMoneda.call(this); // aparece la primera moneda de inmediato
 
-  // Grupo de enemigos
-  enemigos = this.physics.add.group();
+  // — ENEMIGOS —
+  enemigos = this.physics.add.group(); // también vacío al inicio
 
-  // Spawn moneda cada 2 segundos
+  // — TEMPORIZADORES —
+  // addEvent llama a una función cada X milisegundos
   this.time.addEvent({
-    delay: 2000,
-    callback: spawnMoneda,
-    callbackScope: this,
-    loop: true
+    delay: 2000,              // cada 2000 ms = cada 2 segundos
+    callback: spawnMoneda,    // función a llamar
+    callbackScope: this,      // contexto (necesario para usar 'this' dentro)
+    loop: true                // repetir indefinidamente
   });
 
-  // Spawn enemigo cada 3 segundos
   this.time.addEvent({
-    delay: 3000,
+    delay: 3000,              // cada 3 segundos aparece un enemigo
     callback: spawnEnemigo,
     callbackScope: this,
     loop: true
   });
 
-  // Overlap: jugador recoge moneda
+  // — DETECCIÓN DE CONTACTO —
+  // overlap = "cuando se tocan, llama a esta función"
+  // (a diferencia de collider, no los hace rebotar)
+
+  // Si jugador toca una moneda → llama a recolectar()
   this.physics.add.overlap(jugador, monedas, recolectar, null, this);
 
-  // Overlap: jugador toca enemigo → pierde vida
+  // Si jugador toca un enemigo → llama a golpe()
   this.physics.add.overlap(jugador, enemigos, golpe, null, this);
 
+  // — TECLADO —
+  // createCursorKeys() devuelve un objeto con las 4 flechas + space
   cursors = this.input.keyboard.createCursorKeys();
 
-  // HUD
+  // — HUD (Heads-Up Display) = texto en pantalla —
+  // Guardamos la referencia para poder cambiar el texto luego
   textoPuntos = this.add.text(10, 10, 'Puntos: 0', {
     fontSize: '18px', color: '#fbbf24', fontFamily: 'Consolas'
   });
@@ -215,67 +251,88 @@ function create() {
     fontSize: '16px', color: '#f87171', fontFamily: 'Consolas'
   });
 
-  this.add.text(10, 378, '← → para moverse · recoge ● evita ■', {
+  // Instrucciones fijas en la parte de abajo
+  this.add.text(10, 378, '← → para moverse  ·  recoge ● evita ■', {
     fontSize: '11px', color: '#555'
   });
 }
 
-// ── update: game loop ───────────────────────────────────
+
+// ── 5. UPDATE ───────────────────────────────────────
+// Se ejecuta ~60 veces por segundo (cada frame).
+// Solo manejamos el movimiento del jugador aquí.
 function update() {
+  // Si el juego terminó, no hacer nada más
   if (gameOver) return;
 
   if (cursors.left.isDown) {
-    jugador.setVelocityX(-220);
+    jugador.setVelocityX(-220); // mover izquierda (negativo = izquierda)
   } else if (cursors.right.isDown) {
-    jugador.setVelocityX(220);
+    jugador.setVelocityX(220);  // mover derecha
   } else {
-    jugador.setVelocityX(0);
+    jugador.setVelocityX(0);    // sin tecla → frenar
   }
 }
 
-// ── Funciones auxiliares ────────────────────────────────
 
+// ── 6. FUNCIONES AUXILIARES ─────────────────────────
+
+// Crea una moneda en posición X aleatoria y la hace caer
 function spawnMoneda() {
-  if (gameOver) return;
+  if (gameOver) return; // no spawnear si el juego terminó
+
+  // Math.Between(min, max) → número aleatorio en ese rango
   const x = Phaser.Math.Between(20, 480);
-  const m = monedas.create(x, 20, 'moneda');
-  m.setVelocityY(Phaser.Math.Between(80, 160));
+
+  const m = monedas.create(x, 20, 'moneda'); // aparece arriba (y=20)
+  m.setVelocityY(Phaser.Math.Between(80, 160)); // cae a velocidad aleatoria
 }
 
+// Crea un enemigo (igual que la moneda pero más rápido)
 function spawnEnemigo() {
   if (gameOver) return;
+
   const x = Phaser.Math.Between(20, 480);
   const e = enemigos.create(x, 20, 'enemigo');
-  e.setVelocityY(Phaser.Math.Between(120, 220));
+  e.setVelocityY(Phaser.Math.Between(120, 220)); // más rápido que la moneda
 }
 
+// Se llama automáticamente cuando el jugador toca una moneda.
+// Phaser pasa los dos objetos que chocaron como parámetros.
 function recolectar(jugador, moneda) {
-  moneda.destroy();
-  puntos += 10;
-  textoPuntos.setText('Puntos: ' + puntos);
+  moneda.destroy();           // eliminar la moneda del juego
+  puntos += 10;               // sumar puntos
+  textoPuntos.setText('Puntos: ' + puntos); // actualizar el texto en pantalla
 }
 
+// Se llama cuando el jugador toca un enemigo
 function golpe(jugador, enemigo) {
-  enemigo.destroy();
-  vidas--;
+  enemigo.destroy(); // eliminar el enemigo
+  vidas--;           // restar una vida
 
+  // Construir string de corazones según las vidas restantes
+  // '♥ '.repeat(2) → '♥ ♥ '   |   si vidas=0 muestra '✘'
   const corazones = '♥ '.repeat(vidas).trim() || '✘';
   textoVidas.setText('Vidas: ' + corazones);
 
-  // Flash rojo en el jugador
+  // Efecto visual: el jugador se pone rojo 300ms
   jugador.setTint(0xff0000);
-  this.time.delayedCall(300, () => jugador.clearTint());
+  this.time.delayedCall(300, () => jugador.clearTint()); // quitar color tras 300ms
 
+  // Si no quedan vidas, terminar el juego
   if (vidas <= 0) terminarJuego.call(this);
 }
 
+// Muestra la pantalla de Game Over
 function terminarJuego() {
   gameOver = true;
-  this.physics.pause();
+  this.physics.pause(); // congela toda la física (objetos dejan de moverse)
 
-  // Overlay oscuro
+  // Rectángulo negro semitransparente encima de todo
+  // el último parámetro (0.6) es la opacidad: 0=invisible, 1=sólido
   this.add.rectangle(250, 200, 500, 400, 0x000000, 0.6);
 
+  // Textos centrados — setOrigin(0.5) centra el texto en su propia x,y
   this.add.text(250, 140, 'GAME OVER', {
     fontSize: '40px', color: '#f87171', fontFamily: 'Consolas'
   }).setOrigin(0.5);
@@ -288,6 +345,8 @@ function terminarJuego() {
     fontSize: '16px', color: '#888', fontFamily: 'Consolas'
   }).setOrigin(0.5);
 
+  // Al hacer clic en cualquier parte → reiniciar la escena
+  // scene.restart() vuelve a llamar a create() desde cero
   this.input.on('pointerdown', () => this.scene.restart());
 }
 </textarea>
