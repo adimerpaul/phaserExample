@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js 05 - Mini Mundo 3D</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 14px 24px; background: #16213e; border-bottom: 2px solid #ff6b35; }
+    header h1 { color: #ff6b35; font-size: 1.2rem; }
+    header p  { color: #888; font-size: 0.82rem; margin-top: 3px; }
+    .teoria { background: #16213e; border-bottom: 1px solid #2a1a0e; padding: 0 24px; }
+    .teoria summary { cursor: pointer; padding: 10px 0; color: #fbbf24; font-size: 0.9rem; user-select: none; }
+    .teoria-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; padding: 0 0 12px; }
+    .bloque { background: #0d1b2a; border-left: 3px solid #ff6b35; border-radius: 4px; padding: 10px 14px; font-size: 0.82rem; line-height: 1.6; }
+    .bloque strong { color: #ff6b35; display: block; margin-bottom: 4px; }
+    pre { background: #16213e; padding: 8px; border-radius: 4px; font-size: 0.78rem; color: #a8d8ea; overflow-x: auto; margin-top: 4px; }
+    .workspace { flex: 1; display: flex; overflow: hidden; }
+    .editor-panel { width: 50%; display: flex; flex-direction: column; border-right: 2px solid #2a1a0e; }
+    .panel-bar { background: #2a1a0e; padding: 6px 14px; font-size: 0.8rem; color: #ff6b35; display: flex; align-items: center; justify-content: space-between; }
+    textarea { flex: 1; background: #0d1b2a; color: #a8d8ea; border: none; padding: 14px; font-family: 'Consolas', monospace; font-size: 0.85rem; line-height: 1.7; resize: none; outline: none; tab-size: 2; }
+    button { background: #ff6b35; color: #fff; border: none; padding: 6px 18px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
+    button:hover { background: #ff8c5a; }
+    .preview-panel { flex: 1; display: flex; flex-direction: column; }
+    iframe { flex: 1; border: none; background: #000; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Lección 05 — Mini Mundo 3D</h1>
+  <p>Proyecto final: piso, árboles, edificios, jugador, cámara en tercera persona y día/noche.</p>
+</header>
+
+<div class="teoria">
+  <details>
+    <summary>📖 Ver teoría — técnicas usadas en este proyecto</summary>
+    <div class="teoria-grid">
+
+      <div class="bloque">
+        <strong>Agrupar objetos</strong>
+        <pre>// Group: agrupa varios Mesh como uno solo
+// Mover/rotar el grupo mueve todo adentro
+const arbol = new THREE.Group();
+arbol.add(tronco);
+arbol.add(copa);
+arbol.position.set(3, 0, 2);
+scene.add(arbol);</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Cámara en 3ª persona</strong>
+        <pre>// En animate(), hacer que la cámara siga al jugador:
+const offset = new THREE.Vector3(0, 4, 8);
+
+// Posición de la cámara = jugador + offset
+camera.position.copy(
+  jugador.position
+).add(offset);
+
+// Siempre mirar al jugador
+camera.lookAt(jugador.position);</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Niebla (atmosphere)</strong>
+        <pre>// Fog(color, near, far)
+// near = donde empieza la niebla
+// far  = donde los objetos desaparecen
+scene.fog = new THREE.Fog(
+  0x87ceeb, // color del cielo
+  10,
+  50
+);
+
+// El background debe ser el mismo color
+scene.background = new THREE.Color(0x87ceeb);</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Ciclo día/noche</strong>
+        <pre>// Cambiar la intensidad de la luz con el tiempo
+const reloj = new THREE.Clock();
+
+function animate() {
+  const t = reloj.getElapsedTime();
+  // sin() oscila entre -1 y 1
+  // mapear a rango de intensidad (0.1 a 1.5)
+  const brillo = (Math.sin(t * 0.3) + 1) / 2;
+  luzSol.intensity = brillo * 1.5 + 0.1;
+}</pre>
+      </div>
+
+    </div>
+  </details>
+</div>
+
+<div class="workspace">
+  <div class="editor-panel">
+    <div class="panel-bar">
+      <span>✏️ Edita y pulsa Ejecutar</span>
+      <button onclick="ejecutar()">▶ Ejecutar</button>
+    </div>
+    <textarea id="codigo" spellcheck="false">import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/controls/OrbitControls.js';
+
+// ═══════════════════════════════════════════════════
+//  MINI MUNDO 3D
+//  WASD / flechas — mover jugador
+//  Mouse — orbitar cámara
+//  El cielo cambia con el tiempo (día/noche)
+// ═══════════════════════════════════════════════════
+
+// ── ESCENA ──────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb); // azul cielo
+scene.fog = new THREE.Fog(0x87ceeb, 20, 60);  // niebla a lo lejos
+
+// ── CÁMARA ──────────────────────────────────────────
+const camera = new THREE.PerspectiveCamera(
+  70, window.innerWidth / window.innerHeight, 0.1, 200
+);
+camera.position.set(0, 6, 12);
+
+// ── RENDERER ────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // sombras suaves
+document.body.appendChild(renderer.domElement);
+
+// ── ORBIT CONTROLS ──────────────────────────────────
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 3;   // no acercarse demasiado
+controls.maxDistance = 30;  // no alejarse demasiado
+controls.maxPolarAngle = Math.PI / 2 - 0.05; // no pasar el suelo
+
+// ── LUCES ────────────────────────────────────────────
+const luzAmbiente = new THREE.AmbientLight(0x8888ff, 0.5);
+scene.add(luzAmbiente);
+
+// Sol con sombras
+const sol = new THREE.DirectionalLight(0xfffadd, 1.5);
+sol.position.set(10, 20, 10);
+sol.castShadow = true;
+sol.shadow.mapSize.width  = 2048; // calidad de la sombra
+sol.shadow.mapSize.height = 2048;
+sol.shadow.camera.near = 0.5;
+sol.shadow.camera.far  = 100;
+sol.shadow.camera.left   = -30;
+sol.shadow.camera.right  = 30;
+sol.shadow.camera.top    = 30;
+sol.shadow.camera.bottom = -30;
+scene.add(sol);
+
+// ── SUELO ───────────────────────────────────────────
+const suelo = new THREE.Mesh(
+  new THREE.PlaneGeometry(80, 80),
+  new THREE.MeshStandardMaterial({ color: 0x3a7d44, roughness: 1 }) // verde hierba
+);
+suelo.rotation.x = -Math.PI / 2;
+suelo.receiveShadow = true;
+scene.add(suelo);
+
+// ── FUNCIÓN: crear árbol ────────────────────────────
+// Un árbol = tronco (cilindro) + copa (cono)
+// Usamos THREE.Group para agrupar las dos partes
+function crearArbol(x, z) {
+  const grupo = new THREE.Group();
+
+  const tronco = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.2, 0.3, 1.5, 8),
+    new THREE.MeshStandardMaterial({ color: 0x8b5e3c })
+  );
+  tronco.position.y = 0.75;
+  tronco.castShadow = true;
+  grupo.add(tronco);
+
+  // Copa con altura aleatoria para variedad
+  const altoCopa = 2 + Math.random() * 1.5;
+  const copa = new THREE.Mesh(
+    new THREE.ConeGeometry(1.2, altoCopa, 8),
+    new THREE.MeshStandardMaterial({ color: 0x2d6a4f })
+  );
+  copa.position.y = 1.5 + altoCopa / 2;
+  copa.castShadow = true;
+  grupo.add(copa);
+
+  grupo.position.set(x, 0, z);
+  scene.add(grupo);
+}
+
+// ── FUNCIÓN: crear edificio ─────────────────────────
+function crearEdificio(x, z, alto, color) {
+  const edificio = new THREE.Mesh(
+    new THREE.BoxGeometry(2, alto, 2),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.8 })
+  );
+  edificio.position.set(x, alto / 2, z);
+  edificio.castShadow = true;
+  edificio.receiveShadow = true;
+  scene.add(edificio);
+}
+
+// ── POBLAR EL MUNDO ─────────────────────────────────
+// Árboles en posiciones fijas alrededor del mapa
+const posicionesArboles = [
+  [-8,  -5], [-12, -3], [-7, -10], [-15, -8],
+  [ 8,  -5], [ 12, -3], [ 7, -10], [ 14, -8],
+  [-8,   5], [-10,  8], [ 8,   5], [ 10,  9],
+  [-3,  12], [  3, 12], [-5, -14], [  5, -14],
+];
+posicionesArboles.forEach(([x, z]) => crearArbol(x, z));
+
+// Edificios (pequeña ciudad al fondo)
+crearEdificio(-10, -18, 6, 0x8899aa);
+crearEdificio( -6, -20, 4, 0x99aabb);
+crearEdificio( -2, -19, 8, 0x778899);
+crearEdificio(  2, -18, 5, 0x8899aa);
+crearEdificio(  7, -20, 7, 0x99aacc);
+crearEdificio( 11, -18, 4, 0x778899);
+
+// Camino (plano gris)
+const camino = new THREE.Mesh(
+  new THREE.PlaneGeometry(3, 20),
+  new THREE.MeshStandardMaterial({ color: 0x888888 })
+);
+camino.rotation.x = -Math.PI / 2;
+camino.position.set(0, 0.01, -8);
+scene.add(camino);
+
+// ── JUGADOR ─────────────────────────────────────────
+const jugador = new THREE.Group();
+
+// Cuerpo
+const cuerpo = new THREE.Mesh(
+  new THREE.BoxGeometry(0.8, 1.2, 0.5),
+  new THREE.MeshStandardMaterial({ color: 0xff6b35 })
+);
+cuerpo.position.y = 0.6;
+cuerpo.castShadow = true;
+jugador.add(cuerpo);
+
+// Cabeza
+const cabeza = new THREE.Mesh(
+  new THREE.BoxGeometry(0.6, 0.6, 0.6),
+  new THREE.MeshStandardMaterial({ color: 0xfbbf24 })
+);
+cabeza.position.y = 1.5;
+cabeza.castShadow = true;
+jugador.add(cabeza);
+
+jugador.position.set(0, 0, 0);
+scene.add(jugador);
+
+// ── TECLADO ─────────────────────────────────────────
+const teclas = {};
+window.addEventListener('keydown', e => { teclas[e.key] = true;  e.preventDefault(); });
+window.addEventListener('keyup',   e => { teclas[e.key] = false; });
+
+const VELOCIDAD  = 6;
+const reloj = new THREE.Clock();
+
+// ── CIELO DINÁMICO ──────────────────────────────────
+// Colores del cielo en diferentes momentos del día
+const colorDia   = new THREE.Color(0x87ceeb);
+const colorAtard = new THREE.Color(0xff7043);
+const colorNoche = new THREE.Color(0x0a0a2a);
+const colorActual = new THREE.Color();
+
+// ── ANIMATE ─────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+
+  const delta   = reloj.getDelta();
+  const tiempo  = reloj.getElapsedTime();
+
+  // Mover jugador con teclado
+  let moviendose = false;
+  if (teclas['w'] || teclas['ArrowUp'])    { jugador.position.z -= VELOCIDAD * delta; moviendose = true; }
+  if (teclas['s'] || teclas['ArrowDown'])  { jugador.position.z += VELOCIDAD * delta; moviendose = true; }
+  if (teclas['a'] || teclas['ArrowLeft'])  { jugador.position.x -= VELOCIDAD * delta; moviendose = true; }
+  if (teclas['d'] || teclas['ArrowRight']) { jugador.position.x += VELOCIDAD * delta; moviendose = true; }
+
+  // Rotar jugador hacia donde se mueve
+  if (teclas['a'] || teclas['ArrowLeft'])  jugador.rotation.y += 0.08;
+  if (teclas['d'] || teclas['ArrowRight']) jugador.rotation.y -= 0.08;
+
+  // Animación de caminar: mover los pies (cuerpo sube y baja)
+  if (moviendose) {
+    cuerpo.position.y = 0.6 + Math.sin(tiempo * 10) * 0.04;
+  }
+
+  // Hacer que los controles de órbita sigan al jugador
+  controls.target.copy(jugador.position).add(new THREE.Vector3(0, 1, 0));
+
+  // ── Ciclo día/noche ──────────────────────────────
+  // sin() oscila entre -1 y 1 lentamente
+  const factorDia = (Math.sin(tiempo * 0.15) + 1) / 2; // 0 a 1
+
+  // Mezclar colores según el momento del día
+  if (factorDia > 0.5) {
+    colorActual.lerpColors(colorAtard, colorDia, (factorDia - 0.5) * 2);
+  } else {
+    colorActual.lerpColors(colorNoche, colorAtard, factorDia * 2);
+  }
+  scene.background.copy(colorActual);
+  scene.fog.color.copy(colorActual);
+
+  // Intensidad del sol según el día
+  sol.intensity        = factorDia * 1.8 + 0.1;
+  luzAmbiente.intensity = factorDia * 0.5 + 0.1;
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// HUD
+const info = document.createElement('div');
+info.style = 'position:fixed;top:10px;left:10px;color:#fff;font:12px Consolas;pointer-events:none;background:rgba(0,0,0,0.4);padding:8px 12px;border-radius:6px;line-height:1.9';
+info.innerHTML = `<b style="color:#ff6b35">Mini Mundo 3D</b><br>
+WASD / ↑↓←→ — mover<br>
+🖱 Mouse — orbitar cámara<br>
+<span style="color:#fbbf24">El cielo cambia solo (día/noche)</span>`;
+document.body.appendChild(info);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</textarea>
+  </div>
+  <div class="preview-panel">
+    <div class="panel-bar"><span>🌍 Haz clic aquí — WASD mueve al jugador · mouse orbita · el cielo cambia solo</span></div>
+    <iframe id="preview"></iframe>
+  </div>
+</div>
+
+<script>
+  function ejecutar() {
+    const codigo = document.getElementById('codigo').value;
+    const iframe = document.getElementById('preview');
+    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>*{margin:0;padding:0;}body{background:#000;overflow:hidden;}</style>
+</head><body>
+<script type="module">${codigo}<\/script>
+</body></html>`;
+  }
+  window.onload = ejecutar;
+</script>
+</body>
+</html>

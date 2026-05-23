@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Three.js Cubo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+
+<script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js';
+
+    const scene    = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1b2a);
+
+    const camera   = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.5, 9); // un poco arriba y alejada
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // ── FIGURAS BÁSICAS ────────────────────────────────
+    // Cada figura tiene: new THREE.XxxGeometry(parámetros)
+    // Cada material tiene: new THREE.MeshBasicMaterial({ color: ... })
+    // Se unen en: new THREE.Mesh(geometria, material)
+
+    // 1. CUBO — BoxGeometry(ancho, alto, profundo)
+    const cubo = new THREE.Mesh(
+        new THREE.BoxGeometry(1.4, 1.4, 1.4),
+        new THREE.MeshBasicMaterial({ color: 0xff6b35 })
+    );
+    cubo.position.x = -5;
+    scene.add(cubo);
+
+    // 2. ESFERA — SphereGeometry(radio, segW, segH)
+    // Más segmentos = más redonda pero más pesada en memoria
+    const esfera = new THREE.Mesh(
+        new THREE.SphereGeometry(0.8, 32, 32),
+        new THREE.MeshBasicMaterial({ color: 0x4ade80 })
+    );
+    esfera.position.x = -2.5;
+    scene.add(esfera);
+
+    // 3. PLANO — PlaneGeometry(ancho, alto)
+    // Por defecto es vertical, lo inclinamos para verlo
+    const plano = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.6, 1.6),
+        new THREE.MeshBasicMaterial({ color: 0xfbbf24, side: THREE.DoubleSide })
+    );
+    plano.position.x = 0;
+    plano.rotation.y = Math.PI / 6; // rotar 30° para verlo en 3D
+    scene.add(plano);
+
+    // 4. CILINDRO — CylinderGeometry(radioTop, radioBase, alto, segmentos)
+    const cilindro = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.5, 1.8, 32),
+        new THREE.MeshBasicMaterial({ color: 0x00d4ff })
+    );
+    cilindro.position.x = 2.5;
+    scene.add(cilindro);
+
+    // 5. TORO (dona) — TorusGeometry(radio, tubo, segH, segV)
+    const toro = new THREE.Mesh(
+        new THREE.TorusGeometry(0.7, 0.28, 16, 60),
+        new THREE.MeshBasicMaterial({ color: 0xa78bfa })
+    );
+    toro.position.x = 5;
+    scene.add(toro);
+
+    // ── ANIMACIÓN ─────────────────────────────────────
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Cada figura rota diferente para mostrar su forma 3D
+        cubo.rotation.x     += 0.008;
+        cubo.rotation.y     += 0.012;
+
+        esfera.rotation.y   += 0.012;
+
+        plano.rotation.z    += 0.008;
+
+        cilindro.rotation.x += 0.005;
+        cilindro.rotation.y += 0.01;
+
+        toro.rotation.x     += 0.01;
+        toro.rotation.y     += 0.008;
+
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // ── ETIQUETAS HTML ─────────────────────────────────
+    // Three.js no dibuja texto fácilmente en 3D, usamos HTML encima
+    const nombres = ['Cubo', 'Esfera', 'Plano', 'Cilindro', 'Toro'];
+    const colores = ['#ff6b35', '#4ade80', '#fbbf24', '#00d4ff', '#a78bfa'];
+    const etiquetas = document.createElement('div');
+    etiquetas.style = 'position:fixed;bottom:10px;left:0;width:100%;display:flex;justify-content:space-around;pointer-events:none';
+    etiquetas.innerHTML = nombres.map((n, i) =>
+        `<span style="color:${colores[i]};font:bold 13px Consolas">${n}</span>`
+    ).join('');
+    document.body.appendChild(etiquetas);
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+</script>
+
+</body>
+</html>

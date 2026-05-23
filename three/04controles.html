@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js 04 - Movimiento y controles</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 14px 24px; background: #16213e; border-bottom: 2px solid #ff6b35; }
+    header h1 { color: #ff6b35; font-size: 1.2rem; }
+    header p  { color: #888; font-size: 0.82rem; margin-top: 3px; }
+    .teoria { background: #16213e; border-bottom: 1px solid #2a1a0e; padding: 0 24px; }
+    .teoria summary { cursor: pointer; padding: 10px 0; color: #fbbf24; font-size: 0.9rem; user-select: none; }
+    .teoria-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; padding: 0 0 12px; }
+    .bloque { background: #0d1b2a; border-left: 3px solid #ff6b35; border-radius: 4px; padding: 10px 14px; font-size: 0.82rem; line-height: 1.6; }
+    .bloque strong { color: #ff6b35; display: block; margin-bottom: 4px; }
+    pre { background: #16213e; padding: 8px; border-radius: 4px; font-size: 0.78rem; color: #a8d8ea; overflow-x: auto; margin-top: 4px; }
+    .workspace { flex: 1; display: flex; overflow: hidden; }
+    .editor-panel { width: 50%; display: flex; flex-direction: column; border-right: 2px solid #2a1a0e; }
+    .panel-bar { background: #2a1a0e; padding: 6px 14px; font-size: 0.8rem; color: #ff6b35; display: flex; align-items: center; justify-content: space-between; }
+    textarea { flex: 1; background: #0d1b2a; color: #a8d8ea; border: none; padding: 14px; font-family: 'Consolas', monospace; font-size: 0.85rem; line-height: 1.7; resize: none; outline: none; tab-size: 2; }
+    button { background: #ff6b35; color: #fff; border: none; padding: 6px 18px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
+    button:hover { background: #ff8c5a; }
+    .preview-panel { flex: 1; display: flex; flex-direction: column; }
+    iframe { flex: 1; border: none; background: #000; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Lección 04 — Movimiento y controles</h1>
+  <p>OrbitControls para rotar la cámara con el mouse. WASD para mover un objeto con el teclado.</p>
+</header>
+
+<div class="teoria">
+  <details>
+    <summary>📖 Ver teoría</summary>
+    <div class="teoria-grid">
+
+      <div class="bloque">
+        <strong>OrbitControls (mouse)</strong>
+        <pre>import { OrbitControls } from
+  'three/examples/jsm/controls/OrbitControls.js';
+
+const controls = new OrbitControls(
+  camera,
+  renderer.domElement
+);
+
+// En el loop animate():
+controls.update(); // ← obligatorio
+
+// Opciones útiles:
+controls.enableDamping = true; // inercia
+controls.autoRotate = true;    // gira solo</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Teclado con keydown/keyup</strong>
+        <pre>// Guardar qué teclas están presionadas
+const teclas = {};
+
+window.addEventListener('keydown', e => {
+  teclas[e.key] = true;  // presionada
+});
+window.addEventListener('keyup', e => {
+  teclas[e.key] = false; // soltada
+});
+
+// En animate():
+if (teclas['w']) objeto.position.z -= 0.1;
+if (teclas['s']) objeto.position.z += 0.1;</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Velocidad y delta time</strong>
+        <pre>// El problema: en PCs rápidas el objeto
+// se mueve más rápido (más frames/seg)
+
+// Solución: usar el tiempo entre frames
+const clock = new THREE.Clock();
+
+function animate() {
+  const delta = clock.getDelta(); // seg
+  // Velocidad independiente del framerate:
+  objeto.position.x += 2 * delta; // 2 unidades/seg
+}</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Mover la cámara</strong>
+        <pre>// Seguir al jugador (cámara en tercera persona)
+camera.position.x = jugador.position.x;
+camera.position.z = jugador.position.z + 5;
+camera.position.y = jugador.position.y + 3;
+camera.lookAt(jugador.position);
+
+// O usar el helper de Three.js:
+// PointerLockControls → FPS</pre>
+      </div>
+
+    </div>
+  </details>
+</div>
+
+<div class="workspace">
+  <div class="editor-panel">
+    <div class="panel-bar">
+      <span>✏️ Edita y pulsa Ejecutar</span>
+      <button onclick="ejecutar()">▶ Ejecutar</button>
+    </div>
+    <textarea id="codigo" spellcheck="false">import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1b2a);
+scene.fog = new THREE.Fog(0x0d1b2a, 15, 30); // niebla al fondo
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 5, 10);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+// ── ORBIT CONTROLS ─────────────────────────────────
+// Permite controlar la cámara con el mouse:
+//   Clic izquierdo + arrastrar = rotar vista
+//   Clic derecho + arrastrar  = mover (pan)
+//   Rueda del mouse            = zoom
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;   // inercia suave al rotar
+controls.dampingFactor = 0.06;
+controls.target.set(0, 0, 0);    // punto al que mira la cámara
+
+// ── LUCES ──────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+
+const luzDir = new THREE.DirectionalLight(0xffffff, 1.2);
+luzDir.position.set(8, 10, 5);
+luzDir.castShadow = true;
+scene.add(luzDir);
+
+// ── SUELO CON GRID ─────────────────────────────────
+const suelo = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 30),
+  new THREE.MeshStandardMaterial({ color: 0x16213e })
+);
+suelo.rotation.x = -Math.PI / 2;
+suelo.receiveShadow = true;
+scene.add(suelo);
+
+// GridHelper: cuadrícula visual (tamaño, divisiones)
+scene.add(new THREE.GridHelper(30, 30, 0x0f3460, 0x0f3460));
+
+// ── JUGADOR (cubo naranja) ─────────────────────────
+const jugador = new THREE.Mesh(
+  new THREE.BoxGeometry(1, 1, 1),
+  new THREE.MeshStandardMaterial({ color: 0xff6b35, roughness: 0.4, metalness: 0.3 })
+);
+jugador.position.y = 0.5;
+jugador.castShadow = true;
+scene.add(jugador);
+
+// ── OBJETOS DECORATIVOS ────────────────────────────
+// Algunos cubos en la escena para referencia visual
+const colores = [0x4ade80, 0x00d4ff, 0xa78bfa, 0xfbbf24];
+const posiciones = [[-4,0,-4], [4,0,-4], [-4,0,4], [4,0,4]];
+
+posiciones.forEach(([x,y,z], i) => {
+  const cubo = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 2, 1),
+    new THREE.MeshStandardMaterial({ color: colores[i] })
+  );
+  cubo.position.set(x, 1, z);
+  cubo.castShadow = true;
+  scene.add(cubo);
+});
+
+// ── TECLADO ────────────────────────────────────────
+// Técnica correcta: guardar estado de teclas en un objeto
+// En lugar de manejar cada keydown, preguntamos en cada frame
+const teclas = {};
+window.addEventListener('keydown', e => { teclas[e.key] = true; });
+window.addEventListener('keyup',   e => { teclas[e.key] = false; });
+
+const VELOCIDAD = 5; // unidades por segundo
+const reloj = new THREE.Clock(); // para calcular el tiempo entre frames
+
+// ── LOOP ───────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+
+  // getDelta() devuelve los segundos desde el último frame
+  // Multiplicar por velocidad da movimiento independiente del framerate
+  const delta = reloj.getDelta();
+
+  if (teclas['w'] || teclas['ArrowUp'])    jugador.position.z -= VELOCIDAD * delta;
+  if (teclas['s'] || teclas['ArrowDown'])  jugador.position.z += VELOCIDAD * delta;
+  if (teclas['a'] || teclas['ArrowLeft'])  jugador.position.x -= VELOCIDAD * delta;
+  if (teclas['d'] || teclas['ArrowRight']) jugador.position.x += VELOCIDAD * delta;
+
+  // Rotar el jugador según la dirección de movimiento
+  if (teclas['a'] || teclas['ArrowLeft'])  jugador.rotation.y += 0.05;
+  if (teclas['d'] || teclas['ArrowRight']) jugador.rotation.y -= 0.05;
+
+  // controls.update() es obligatorio cuando enableDamping = true
+  controls.update();
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// Info
+const info = document.createElement('div');
+info.style = 'position:fixed;top:10px;left:10px;color:#aaa;font:12px Consolas;pointer-events:none;line-height:2;background:rgba(0,0,0,0.4);padding:8px 12px;border-radius:6px';
+info.innerHTML = `<b style="color:#ff6b35">Controles</b><br>
+WASD / ↑↓←→ — mover cubo<br>
+🖱 Clic + arrastrar — rotar cámara<br>
+🖱 Clic derecho — mover cámara<br>
+🖱 Rueda — zoom`;
+document.body.appendChild(info);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</textarea>
+  </div>
+  <div class="preview-panel">
+    <div class="panel-bar"><span>🎮 Haz clic en el preview — WASD mueve el cubo · mouse orbita la cámara</span></div>
+    <iframe id="preview"></iframe>
+  </div>
+</div>
+
+<script>
+  function ejecutar() {
+    const codigo = document.getElementById('codigo').value;
+    const iframe = document.getElementById('preview');
+    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>*{margin:0;padding:0;}body{background:#000;overflow:hidden;}</style>
+</head><body>
+<script type="module">${codigo}<\/script>
+</body></html>`;
+  }
+  window.onload = ejecutar;
+</script>
+</body>
+</html>

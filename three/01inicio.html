@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js 01 - Introducción</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 14px 24px; background: #16213e; border-bottom: 2px solid #ff6b35; }
+    header h1 { color: #ff6b35; font-size: 1.2rem; }
+    header p  { color: #888; font-size: 0.82rem; margin-top: 3px; }
+    .teoria { background: #16213e; border-bottom: 1px solid #2a1a0e; padding: 0 24px; }
+    .teoria summary { cursor: pointer; padding: 10px 0; color: #fbbf24; font-size: 0.9rem; user-select: none; }
+    .teoria-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; padding: 0 0 12px; }
+    .bloque { background: #0d1b2a; border-left: 3px solid #ff6b35; border-radius: 4px; padding: 10px 14px; font-size: 0.82rem; line-height: 1.6; }
+    .bloque strong { color: #ff6b35; display: block; margin-bottom: 4px; }
+    pre { background: #16213e; padding: 8px; border-radius: 4px; font-size: 0.78rem; color: #a8d8ea; overflow-x: auto; margin-top: 4px; }
+    table { width: 100%; font-size: 0.8rem; border-collapse: collapse; margin-top: 6px; }
+    th { background: #2a1a0e; color: #ff6b35; padding: 5px 8px; text-align: left; }
+    td { padding: 4px 8px; border-bottom: 1px solid #2a1a0e; }
+    .workspace { flex: 1; display: flex; overflow: hidden; }
+    .editor-panel { width: 50%; display: flex; flex-direction: column; border-right: 2px solid #2a1a0e; }
+    .panel-bar { background: #2a1a0e; padding: 6px 14px; font-size: 0.8rem; color: #ff6b35; display: flex; align-items: center; justify-content: space-between; }
+    textarea { flex: 1; background: #0d1b2a; color: #a8d8ea; border: none; padding: 14px; font-family: 'Consolas', monospace; font-size: 0.85rem; line-height: 1.7; resize: none; outline: none; tab-size: 2; }
+    button { background: #ff6b35; color: #fff; border: none; padding: 6px 18px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
+    button:hover { background: #ff8c5a; }
+    .preview-panel { flex: 1; display: flex; flex-direction: column; }
+    iframe { flex: 1; border: none; background: #000; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Lección 01 — Introducción a Three.js</h1>
+  <p>Los 3 ingredientes básicos: Escena + Cámara + Renderer. Sin ellos no hay nada.</p>
+</header>
+
+<div class="teoria">
+  <details>
+    <summary>📖 Ver teoría</summary>
+    <div class="teoria-grid">
+
+      <div class="bloque">
+        <strong>¿Qué es Three.js?</strong>
+        Librería JavaScript para crear gráficos 3D en el navegador.
+        Usa WebGL por debajo (que usa la GPU), pero con una API
+        mucho más simple. Sin Three.js, WebGL puro es muy difícil.
+      </div>
+
+      <div class="bloque">
+        <strong>Phaser vs Three.js</strong>
+        <table>
+          <tr><th></th><th>Phaser</th><th>Three.js</th></tr>
+          <tr><td>Dimensión</td><td>2D</td><td>3D</td></tr>
+          <tr><td>Enfoque</td><td>Juegos</td><td>Gráficos</td></tr>
+          <tr><td>Física</td><td>Arcade</td><td>Cannon.js</td></tr>
+          <tr><td>Módulos</td><td>Script</td><td>ES Module</td></tr>
+        </table>
+      </div>
+
+      <div class="bloque">
+        <strong>Los 3 elementos base</strong>
+        <pre>// 1. Escena — el "mundo"
+const scene = new THREE.Scene();
+
+// 2. Cámara — el "ojo"
+const camera = new THREE.PerspectiveCamera(
+  75,    // fov: campo de visión
+  w / h, // aspect: proporción
+  0.1,   // near: mínimo visible
+  1000   // far: máximo visible
+);
+
+// 3. Renderer — el "pintor"
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(w, h);
+document.body.appendChild(
+  renderer.domElement // canvas
+);</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Loop de animación</strong>
+        <pre>// requestAnimationFrame llama a
+// 'animate' ~60 veces por segundo
+function animate() {
+  requestAnimationFrame(animate);
+
+  // aquí rotas, mueves objetos...
+  cubo.rotation.y += 0.01;
+
+  // al final, renderizar
+  renderer.render(scene, camera);
+}
+animate(); // arrancar</pre>
+      </div>
+
+    </div>
+  </details>
+</div>
+
+<div class="workspace">
+  <div class="editor-panel">
+    <div class="panel-bar">
+      <span>✏️ Edita y pulsa Ejecutar</span>
+      <button onclick="ejecutar()">▶ Ejecutar</button>
+    </div>
+    <textarea id="codigo" spellcheck="false">// Three.js se importa como módulo ES
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js';
+
+// ── 1. ESCENA ──────────────────────────────────
+// El "mundo" donde viven todos los objetos 3D
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1b2a); // color de fondo
+
+// ── 2. CÁMARA ──────────────────────────────────
+// PerspectiveCamera = visión humana (los lejanos se ven pequeños)
+// parámetros: fov, aspect, near, far
+const camera = new THREE.PerspectiveCamera(
+  75,                                      // campo de visión (grados)
+  window.innerWidth / window.innerHeight,  // proporción pantalla
+  0.1,                                     // distancia mínima visible
+  1000                                     // distancia máxima visible
+);
+camera.position.z = 5; // alejarse del centro (el cubo está en 0,0,0)
+
+// ── 3. RENDERER ────────────────────────────────
+// Es el que dibuja la escena en un <canvas> del HTML
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement); // añadir canvas al body
+
+// ── OBJETO ─────────────────────────────────────
+// En Three.js un objeto 3D = Geometría + Material = Mesh
+const geometria = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+const material  = new THREE.MeshBasicMaterial({
+  color: 0xff6b35,   // color en hexadecimal
+  wireframe: true    // solo el esqueleto, para ver la profundidad 3D
+});
+const cubo = new THREE.Mesh(geometria, material);
+scene.add(cubo); // ← agregar a la escena (sin esto no aparece)
+
+// ── LOOP DE ANIMACIÓN ──────────────────────────
+// requestAnimationFrame se sincroniza con la pantalla (~60 fps)
+function animate() {
+  requestAnimationFrame(animate); // ← se llama a sí misma cada frame
+
+  cubo.rotation.x += 0.005; // rotar en X
+  cubo.rotation.y += 0.01;  // rotar en Y
+
+  renderer.render(scene, camera); // dibujar la escena
+}
+animate(); // ← arrancar el loop
+
+// ── RESIZE ─────────────────────────────────────
+// Ajustar cuando cambia el tamaño de la ventana
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix(); // aplicar el cambio
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</textarea>
+  </div>
+  <div class="preview-panel">
+    <div class="panel-bar"><span>🎮 Vista previa 3D</span></div>
+    <iframe id="preview"></iframe>
+  </div>
+</div>
+
+<script>
+  function ejecutar() {
+    const codigo = document.getElementById('codigo').value;
+    const iframe = document.getElementById('preview');
+    // Three.js usa import → necesita type="module"
+    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>*{margin:0;padding:0;}body{background:#000;overflow:hidden;}</style>
+</head><body>
+<script type="module">${codigo}<\/script>
+</body></html>`;
+  }
+  window.onload = ejecutar;
+</script>
+</body>
+</html>

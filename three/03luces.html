@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js 03 - Luces y materiales</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 14px 24px; background: #16213e; border-bottom: 2px solid #ff6b35; }
+    header h1 { color: #ff6b35; font-size: 1.2rem; }
+    header p  { color: #888; font-size: 0.82rem; margin-top: 3px; }
+    .teoria { background: #16213e; border-bottom: 1px solid #2a1a0e; padding: 0 24px; }
+    .teoria summary { cursor: pointer; padding: 10px 0; color: #fbbf24; font-size: 0.9rem; user-select: none; }
+    .teoria-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; padding: 0 0 12px; }
+    .bloque { background: #0d1b2a; border-left: 3px solid #ff6b35; border-radius: 4px; padding: 10px 14px; font-size: 0.82rem; line-height: 1.6; }
+    .bloque strong { color: #ff6b35; display: block; margin-bottom: 4px; }
+    pre { background: #16213e; padding: 8px; border-radius: 4px; font-size: 0.78rem; color: #a8d8ea; overflow-x: auto; margin-top: 4px; }
+    .workspace { flex: 1; display: flex; overflow: hidden; }
+    .editor-panel { width: 50%; display: flex; flex-direction: column; border-right: 2px solid #2a1a0e; }
+    .panel-bar { background: #2a1a0e; padding: 6px 14px; font-size: 0.8rem; color: #ff6b35; display: flex; align-items: center; justify-content: space-between; }
+    textarea { flex: 1; background: #0d1b2a; color: #a8d8ea; border: none; padding: 14px; font-family: 'Consolas', monospace; font-size: 0.85rem; line-height: 1.7; resize: none; outline: none; tab-size: 2; }
+    button { background: #ff6b35; color: #fff; border: none; padding: 6px 18px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
+    button:hover { background: #ff8c5a; }
+    .preview-panel { flex: 1; display: flex; flex-direction: column; }
+    iframe { flex: 1; border: none; background: #000; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Lección 03 — Cámaras, luces y materiales</h1>
+  <p>MeshBasicMaterial ignora la luz. MeshStandardMaterial la necesita para verse bien.</p>
+</header>
+
+<div class="teoria">
+  <details>
+    <summary>📖 Ver teoría</summary>
+    <div class="teoria-grid">
+
+      <div class="bloque">
+        <strong>Tipos de luz</strong>
+        <pre>// Ilumina TODO por igual (sin sombras)
+// Como la luz del cielo
+new THREE.AmbientLight(color, intensidad)
+
+// Como el sol: rayos paralelos
+// Genera sombras
+new THREE.DirectionalLight(color, int)
+
+// Como una bombilla
+// Irradia en todas direcciones
+new THREE.PointLight(color, int, distancia)
+
+// Como un foco/linterna
+new THREE.SpotLight(color, int)</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>MeshBasicMaterial vs MeshStandardMaterial</strong>
+        <pre>// Basic: NO reacciona a la luz
+// Siempre se ve igual, plano
+new THREE.MeshBasicMaterial({
+  color: 0xff0000
+})
+
+// Standard: SÍ reacciona a la luz
+// Necesita al menos una luz en escena
+new THREE.MeshStandardMaterial({
+  color: 0xff0000,
+  roughness: 0.5, // 0=espejo 1=mate
+  metalness: 0.3  // 0=plástico 1=metal
+})</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Sombras</strong>
+        <pre>// 1. Activar en el renderer
+renderer.shadowMap.enabled = true;
+
+// 2. La luz proyecta sombra
+luzDireccional.castShadow = true;
+
+// 3. El objeto proyecta sombra
+cubo.castShadow = true;
+
+// 4. El suelo recibe la sombra
+suelo.receiveShadow = true;
+
+// Si falta alguno, las sombras no aparecen</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Posición de la cámara</strong>
+        <pre>camera.position.set(x, y, z);
+
+// lookAt: apuntar a un punto
+camera.lookAt(0, 0, 0); // mirar al centro
+
+// PerspectiveCamera → visión realista
+// OrthographicCamera → sin perspectiva
+//   (como los planos de arquitectura)</pre>
+      </div>
+
+    </div>
+  </details>
+</div>
+
+<div class="workspace">
+  <div class="editor-panel">
+    <div class="panel-bar">
+      <span>✏️ Edita y pulsa Ejecutar</span>
+      <button onclick="ejecutar()">▶ Ejecutar</button>
+    </div>
+    <textarea id="codigo" spellcheck="false">import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x060d16);
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 3, 7);
+camera.lookAt(0, 0, 0); // apuntar al centro de la escena
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true; // ← activar sombras en el renderer
+document.body.appendChild(renderer.domElement);
+
+// ── LUCES ──────────────────────────────────────────
+
+// AmbientLight: ilumina TODO por igual, no crea sombras
+// Es como la luz de un día nublado: suave, sin dirección
+const luzAmbiente = new THREE.AmbientLight(0xffffff, 0.25);
+scene.add(luzAmbiente);
+
+// DirectionalLight: como el sol, rayos en paralelo, sí crea sombras
+const luzSol = new THREE.DirectionalLight(0xffffff, 1.5);
+luzSol.position.set(5, 8, 5);
+luzSol.castShadow = true; // ← esta luz proyecta sombras
+scene.add(luzSol);
+
+// PointLight: bombilla, irradia en todas direcciones
+// parámetros: color, intensidad, distancia máxima
+const luzPunto = new THREE.PointLight(0x00d4ff, 4, 12);
+luzPunto.position.set(-3, 2, 0);
+scene.add(luzPunto);
+
+// Esferita para visualizar dónde está la PointLight
+const marcadorLuz = new THREE.Mesh(
+  new THREE.SphereGeometry(0.12, 8, 8),
+  new THREE.MeshBasicMaterial({ color: 0x00d4ff })
+);
+marcadorLuz.position.copy(luzPunto.position);
+scene.add(marcadorLuz);
+
+// ── OBJETOS con MeshStandardMaterial ──────────────
+// Este material REACCIONA a la luz (tiene brillo, sombra)
+// Sin luces en la escena, aparece todo negro
+
+const cubo = new THREE.Mesh(
+  new THREE.BoxGeometry(1.5, 1.5, 1.5),
+  new THREE.MeshStandardMaterial({
+    color: 0xff6b35,
+    roughness: 0.2, // 0=espejo brillante, 1=muy mate
+    metalness: 0.7  // 0=plástico, 1=metal puro
+  })
+);
+cubo.position.set(-2.5, 0, 0);
+cubo.castShadow = true; // ← este objeto proyecta sombra
+scene.add(cubo);
+
+const esfera = new THREE.Mesh(
+  new THREE.SphereGeometry(0.9, 32, 32),
+  new THREE.MeshStandardMaterial({
+    color: 0x4ade80,
+    roughness: 0.8, // más mate
+    metalness: 0.0  // como plástico
+  })
+);
+esfera.position.set(2.5, 0, 0);
+esfera.castShadow = true;
+scene.add(esfera);
+
+// ── SUELO ─────────────────────────────────────────
+const suelo = new THREE.Mesh(
+  new THREE.PlaneGeometry(14, 14),
+  new THREE.MeshStandardMaterial({ color: 0x16213e, roughness: 0.9 })
+);
+suelo.rotation.x  = -Math.PI / 2; // tumbarlo horizontal
+suelo.position.y  = -1.2;
+suelo.receiveShadow = true; // ← el suelo recibe sombras de los objetos
+scene.add(suelo);
+
+// ── ANIMACIÓN ─────────────────────────────────────
+let tiempo = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  tiempo += 0.02;
+
+  // La PointLight orbita alrededor del centro
+  // Math.sin/cos crean un movimiento circular
+  luzPunto.position.x  = Math.sin(tiempo) * 4;
+  luzPunto.position.z  = Math.cos(tiempo) * 4;
+  marcadorLuz.position.copy(luzPunto.position); // mover el marcador igual
+
+  cubo.rotation.y   += 0.006;
+  esfera.rotation.y += 0.01;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// Info en pantalla
+const info = document.createElement('div');
+info.style = 'position:fixed;top:10px;left:10px;color:#888;font:12px Consolas;pointer-events:none;line-height:1.8';
+info.innerHTML = `
+  <span style="color:#fff">Luces en escena:</span><br>
+  <span style="color:#aaa">AmbientLight</span> — ilumina todo parejo<br>
+  <span style="color:#fff">DirectionalLight</span> — sol con sombras<br>
+  <span style="color:#00d4ff">● PointLight</span> — orbita alrededor
+`;
+document.body.appendChild(info);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</textarea>
+  </div>
+  <div class="preview-panel">
+    <div class="panel-bar"><span>🎮 Vista previa 3D — observa cómo la luz azul orbita</span></div>
+    <iframe id="preview"></iframe>
+  </div>
+</div>
+
+<script>
+  function ejecutar() {
+    const codigo = document.getElementById('codigo').value;
+    const iframe = document.getElementById('preview');
+    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>*{margin:0;padding:0;}body{background:#000;overflow:hidden;}</style>
+</head><body>
+<script type="module">${codigo}<\/script>
+</body></html>`;
+  }
+  window.onload = ejecutar;
+</script>
+</body>
+</html>
