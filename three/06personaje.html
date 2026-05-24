@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js 06 - Personaje animado FBX</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 14px 24px; background: #16213e; border-bottom: 2px solid #ff6b35; }
+    header h1 { color: #ff6b35; font-size: 1.2rem; }
+    header p  { color: #888; font-size: 0.82rem; margin-top: 3px; }
+    .teoria { background: #16213e; border-bottom: 1px solid #2a1a0e; padding: 0 24px; }
+    .teoria summary { cursor: pointer; padding: 10px 0; color: #fbbf24; font-size: 0.9rem; user-select: none; }
+    .teoria-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; padding: 0 0 12px; }
+    .bloque { background: #0d1b2a; border-left: 3px solid #ff6b35; border-radius: 4px; padding: 10px 14px; font-size: 0.82rem; line-height: 1.6; }
+    .bloque strong { color: #ff6b35; display: block; margin-bottom: 4px; }
+    pre { background: #16213e; padding: 8px; border-radius: 4px; font-size: 0.78rem; color: #a8d8ea; overflow-x: auto; margin-top: 4px; }
+    .workspace { flex: 1; display: flex; overflow: hidden; }
+    .editor-panel { width: 50%; display: flex; flex-direction: column; border-right: 2px solid #2a1a0e; }
+    .panel-bar { background: #2a1a0e; padding: 6px 14px; font-size: 0.8rem; color: #ff6b35; display: flex; align-items: center; justify-content: space-between; }
+    textarea { flex: 1; background: #0d1b2a; color: #a8d8ea; border: none; padding: 14px; font-family: 'Consolas', monospace; font-size: 0.85rem; line-height: 1.7; resize: none; outline: none; tab-size: 2; }
+    button { background: #ff6b35; color: #fff; border: none; padding: 6px 18px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
+    button:hover { background: #ff8c5a; }
+    .preview-panel { flex: 1; display: flex; flex-direction: column; }
+    iframe { flex: 1; border: none; background: #000; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Lección 06 — Personaje animado con FBX</h1>
+  <p>FBXLoader + AnimationMixer + crossFade. Carga tu propio .fbx de Mixamo y muévelo con WASD.</p>
+</header>
+
+<div class="teoria">
+  <details>
+    <summary>📖 Ver teoría</summary>
+    <div class="teoria-grid">
+
+      <div class="bloque">
+        <strong>FBXLoader vs GLTFLoader</strong>
+        <pre>// FBX: formato de Autodesk/Mixamo
+import { FBXLoader }
+  from 'three/addons/loaders/FBXLoader.js';
+
+// GLB/GLTF: formato moderno recomendado
+import { GLTFLoader }
+  from 'three/addons/loaders/GLTFLoader.js';
+
+// Ambos devuelven un objeto con:
+// .scene (o fbx directamente en FBX)
+// .animations  → array de AnimationClip</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>AnimationMixer</strong>
+        <pre>// Mixer = "reproductor" de animaciones
+// Uno por personaje
+mixer = new THREE.AnimationMixer(personaje);
+
+// Registrar cada clip como "acción"
+fbx.animations.forEach(clip => {
+  acciones[clip.name] = mixer.clipAction(clip);
+});
+
+// En animate() actualizar el mixer:
+mixer.update(delta); // ← obligatorio</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Cambiar animación con crossFade</strong>
+        <pre>function cambiarAnim(nombre) {
+  const nueva = acciones[nombre];
+  if (accionActual === nueva) return;
+
+  nueva.reset();
+  nueva.play();
+
+  // crossFadeTo: transición suave
+  // (0.3 = duración en segundos)
+  accionActual.crossFadeTo(nueva, 0.3);
+  accionActual = nueva;
+}</pre>
+      </div>
+
+      <div class="bloque">
+        <strong>Escala Mixamo FBX</strong>
+        <pre>// Mixamo exporta en centímetros.
+// Three.js trabaja en metros.
+// → dividir entre 100:
+personaje.scale.setScalar(0.01);
+
+// Si se ve muy pequeño: 0.02
+// Si se ve gigante: 0.005
+
+// traverse: recorrer todos los hijos
+personaje.traverse(child => {
+  if (child.isMesh) {
+    child.castShadow = true;
+  }
+});</pre>
+      </div>
+
+    </div>
+  </details>
+</div>
+
+<div class="workspace">
+  <div class="editor-panel">
+    <div class="panel-bar">
+      <span>✏️ Edita y pulsa Ejecutar</span>
+      <button onclick="ejecutar()">▶ Ejecutar</button>
+    </div>
+    <textarea id="codigo" spellcheck="false">import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { FBXLoader }     from 'three/addons/loaders/FBXLoader.js';
+
+// ── ESCENA ─────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.fog = new THREE.Fog(0x1a1a2e, 20, 60);
+
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(0, 3, 8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+// ── CONTROLES DE CÁMARA ────────────────────────────
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.target.set(0, 1, 0);
+
+// ── LUCES ──────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const sol = new THREE.DirectionalLight(0xffffff, 1.5);
+sol.position.set(6, 12, 6);
+sol.castShadow = true;
+sol.shadow.mapSize.setScalar(2048);
+scene.add(sol);
+
+// ── SUELO ──────────────────────────────────────────
+const suelo = new THREE.Mesh(
+  new THREE.PlaneGeometry(60, 60),
+  new THREE.MeshStandardMaterial({ color: 0x2d4a22, roughness: 1 })
+);
+suelo.rotation.x = -Math.PI / 2;
+suelo.receiveShadow = true;
+scene.add(suelo);
+scene.add(new THREE.GridHelper(60, 60, 0x1a3a10, 0x1a3a10));
+
+// ── VARIABLES DEL PERSONAJE ────────────────────────
+let personaje  = null;
+let mixer      = null;          // reproductor de animaciones
+let acciones   = {};            // mapa nombre → AnimationAction
+let accionActual = null;
+
+// ── FBXLoader ──────────────────────────────────────
+const loader = new FBXLoader();
+
+function cargarFBX(blobUrl, nombreArchivo) {
+  panelInfo.innerHTML = `<span style="color:#fbbf24">⏳ Cargando ${nombreArchivo}…</span>`;
+
+  loader.load(
+    blobUrl,
+
+    // ── onLoad: el FBX se cargó correctamente ──────
+    (fbx) => {
+      if (personaje) scene.remove(personaje); // quitar personaje anterior
+
+      personaje = fbx;
+
+      // Mixamo exporta en centímetros → escalar a metros
+      personaje.scale.setScalar(0.01);
+      personaje.position.set(0, 0, 0);
+
+      // Activar sombras en cada malla del personaje
+      personaje.traverse(child => {
+        if (child.isMesh) {
+          child.castShadow    = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      scene.add(personaje);
+
+      // Crear el AnimationMixer ligado a este personaje
+      mixer = new THREE.AnimationMixer(personaje);
+      acciones = {};
+
+      // Registrar cada AnimationClip como una "acción"
+      fbx.animations.forEach(clip => {
+        acciones[clip.name] = mixer.clipAction(clip);
+      });
+
+      const nombres = fbx.animations.map(a => a.name);
+      console.log('Animaciones encontradas:', nombres);
+
+      // Reproducir la primera animación disponible
+      if (nombres.length > 0) {
+        accionActual = acciones[nombres[0]];
+        accionActual.play();
+      }
+
+      panelInfo.innerHTML = `
+        <b style="color:#4ade80">✔ ${nombreArchivo}</b><br><br>
+        <span style="color:#888">Animaciones:</span><br>
+        ${nombres.map(n => `<span style="color:#a8d8ea">▶ ${n}</span>`).join('<br>')}
+        <br><br>
+        <span style="color:#555">WASD / flechas — mover<br>🖱 Mouse — rotar cámara</span>
+      `;
+    },
+
+    // ── onProgress: progreso de carga ─────────────
+    (xhr) => {
+      if (xhr.total) {
+        const pct = Math.round(xhr.loaded / xhr.total * 100);
+        panelInfo.innerHTML = `<span style="color:#fbbf24">⏳ ${pct}%</span>`;
+      }
+    },
+
+    // ── onError ────────────────────────────────────
+    (err) => {
+      panelInfo.innerHTML = `<span style="color:#f87171">✘ Error al cargar<br>${err.message}</span>`;
+      console.error(err);
+    }
+  );
+}
+
+// ── CAMBIAR ANIMACIÓN CON CROSSFADE ────────────────
+// crossFadeTo hace una transición suave entre dos animaciones
+function cambiarAnimacion(nombre) {
+  if (!mixer || !acciones[nombre]) return;
+  const nueva = acciones[nombre];
+  if (accionActual === nueva) return;
+
+  nueva.reset();
+  nueva.play();
+  if (accionActual) accionActual.crossFadeTo(nueva, 0.3, false);
+  accionActual = nueva;
+}
+
+// ── TECLADO ────────────────────────────────────────
+const teclas = {};
+window.addEventListener('keydown', e => { teclas[e.key] = true;  e.preventDefault(); });
+window.addEventListener('keyup',   e => { teclas[e.key] = false; });
+
+const VELOCIDAD = 4;
+const reloj = new THREE.Clock();
+
+// ── LOOP DE ANIMACIÓN ──────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = reloj.getDelta();
+
+  // Actualizar el mixer (hace avanzar todas las animaciones)
+  if (mixer) mixer.update(delta);
+
+  if (personaje) {
+    let moviendo = false;
+
+    if (teclas['w'] || teclas['ArrowUp']) {
+      personaje.position.z -= VELOCIDAD * delta;
+      personaje.rotation.y  = Math.PI;    // girar hacia adelante
+      moviendo = true;
+    }
+    if (teclas['s'] || teclas['ArrowDown']) {
+      personaje.position.z += VELOCIDAD * delta;
+      personaje.rotation.y  = 0;
+      moviendo = true;
+    }
+    if (teclas['a'] || teclas['ArrowLeft']) {
+      personaje.position.x -= VELOCIDAD * delta;
+      personaje.rotation.y  = -Math.PI / 2;
+      moviendo = true;
+    }
+    if (teclas['d'] || teclas['ArrowRight']) {
+      personaje.position.x += VELOCIDAD * delta;
+      personaje.rotation.y  = Math.PI / 2;
+      moviendo = true;
+    }
+
+    // La cámara sigue al personaje suavemente (lerp = interpolación)
+    const objetivo = personaje.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+    controls.target.lerp(objetivo, 0.08);
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// ── HUD ────────────────────────────────────────────
+// Panel de información (esquina superior izquierda)
+const panelInfo = document.createElement('div');
+panelInfo.style = `
+  position:fixed; top:10px; left:10px;
+  background:rgba(0,0,0,0.65);
+  color:#aaa; font:12px Consolas;
+  padding:10px 14px; border-radius:6px;
+  line-height:1.9; max-width:220px;
+  pointer-events:none;
+`;
+panelInfo.innerHTML = 'Selecciona un archivo <b style="color:#ff6b35">.fbx</b> para cargar';
+document.body.appendChild(panelInfo);
+
+// Botón centrado arriba para seleccionar archivo
+const input = document.createElement('input');
+input.type   = 'file';
+input.accept = '.fbx';
+input.style  = 'display:none';
+
+const btn = document.createElement('button');
+btn.textContent = '📂  Seleccionar .fbx';
+btn.style = `
+  position:fixed; top:12px; left:50%; transform:translateX(-50%);
+  background:#ff6b35; color:#fff; border:none;
+  padding:8px 20px; border-radius:6px;
+  font:bold 13px Consolas; cursor:pointer; z-index:10;
+`;
+btn.onclick = () => input.click();
+
+document.body.appendChild(btn);
+document.body.appendChild(input);
+
+// Cuando el usuario elige un archivo
+input.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // createObjectURL convierte el archivo local en una URL temporal
+  // que Three.js puede cargar normalmente
+  const url = URL.createObjectURL(file);
+  cargarFBX(url, file.name);
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</textarea>
+  </div>
+  <div class="preview-panel">
+    <div class="panel-bar"><span>🎮 Pulsa Ejecutar → luego "Seleccionar .fbx" dentro del preview</span></div>
+    <iframe id="preview"></iframe>
+  </div>
+</div>
+
+<script>
+  function ejecutar() {
+    const codigo = document.getElementById('codigo').value;
+    const iframe = document.getElementById('preview');
+    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>*{margin:0;padding:0;}body{background:#1a1a2e;overflow:hidden;}</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/"
+  }
+}
+<\/script>
+</head><body>
+<script type="module">${codigo}<\/script>
+</body></html>`;
+  }
+  window.onload = ejecutar;
+</script>
+</body>
+</html>
